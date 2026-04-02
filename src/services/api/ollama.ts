@@ -13,6 +13,7 @@ import type { SystemPrompt } from '../../utils/systemPromptType.js'
 import type { ThinkingConfig } from '../../utils/thinking.js'
 import type { Options } from './claude.js'
 import { getOllamaBaseUrl, getOllamaModel } from '../../utils/model/providers.js'
+import { zodToJsonSchema } from '../../utils/zodToJsonSchema.js'
 
 // ---------------------------------------------------------------------------
 // Message conversion: insightor Message[] → OpenAI ChatCompletionMessageParam[]
@@ -123,20 +124,27 @@ async function convertTools(tools: Tools): Promise<ChatCompletionTool[]> {
   const result: ChatCompletionTool[] = []
   for (const tool of tools) {
     try {
-      const schema = await tool.inputSchema
+      const description = await tool.prompt({
+        getToolPermissionContext: async () => ({} as any),
+        tools,
+        agents: [],
+        allowedAgentTypes: undefined,
+      })
+
+      const inputSchema = ('inputJSONSchema' in tool && tool.inputJSONSchema)
+        ? tool.inputJSONSchema
+        : zodToJsonSchema(tool.inputSchema)
+
       result.push({
         type: 'function',
         function: {
           name: tool.name,
-          description:
-            typeof tool.description === 'function'
-              ? tool.description({} as never)
-              : (tool.description as string) || '',
-          parameters: schema as Record<string, unknown>,
+          description: typeof description === 'string' ? description : String(description || ''),
+          parameters: inputSchema as Record<string, unknown>,
         },
       })
     } catch {
-      // skip tools that fail schema resolution
+      // skip tools that fail schema/prompt resolution
     }
   }
   return result
