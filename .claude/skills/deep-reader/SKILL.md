@@ -7,6 +7,7 @@ description: >-
   Use when user provides text to analyze, mentions "深度阅读", "阅读分析",
   "帮我读", "read this", "analyze this", or asks questions about analyzed texts.
 allowed-tools:
+  - Bash
   - Write
   - Read
   - Grep
@@ -42,10 +43,46 @@ Phase 3: Cross-reference across reports
 Phase 4: Answer follow-up questions
 ```
 
-## Phase 1: Ingest
+## Phase 1: Ingest（用户只需提供文件路径 / URL / 粘贴文本）
 
-1. Receive text (pasted, file path, or URL via WebFetch).
-2. Classify into one of four types:
+### Step 1: 获取原文
+
+根据用户输入的形式获取全文：
+
+| 用户输入 | Agent 操作 |
+|---------|-----------|
+| **文件路径** (如 `/tmp/book.txt`) | 用 **Read** 读取文件内容 |
+| **URL** (如 `https://...`) | 用 **WebFetch** 抓取网页内容 |
+| **直接粘贴文本** | 直接使用对话中的文本 |
+
+### Step 2: 生成 slug
+
+从标题自动生成 slug（小写英文、连字符分隔），例如：
+- 《红楼梦》→ `hong-lou-meng`
+- "Erta Paper on LLM" → `erta-paper-on-llm`
+
+### Step 3: 创建目录结构
+
+用 **Bash** 工具执行：
+
+```bash
+mkdir -p reading-library/{slug}/reports reading-library/{slug}/qa reading-library/{slug}/notes
+```
+
+### Step 4: 存储原文（自动拆分）
+
+用 **Bash** 工具计算原文字符数：`wc -m < /path/to/file` 或直接计算字符串长度。
+
+- **≤ 60000 字符**：直接写入 `reading-library/{slug}/source.md`
+- **> 60000 字符**：按自然分隔点（章节标题、空行段落）拆分为多卷：
+  1. 用 **Read** 读取原文，找到章节标题（如 `# 第X章`、`## Chapter`、连续空行）
+  2. 按章节边界切分，每卷不超过 50000 字符
+  3. 用 **Write** 依次写入 `source-01.md`, `source-02.md`, ...
+  4. 如果没有明显章节标记，按 50000 字符硬切（在最近的段落边界处断开）
+
+### Step 5: 分类
+
+读取原文前 3000 字符，判断文本类型：
 
 | Type | Identifier | Examples |
 |------|-----------|---------|
@@ -54,28 +91,41 @@ Phase 4: Answer follow-up questions
 | **model** (模型类) | 提出框架/模型/矩阵 | 《好战略坏战略》、《思考快与慢》 |
 | **reference** (信息/工具类) | 查阅为主、操作导向 | API 文档、手册、工具书 |
 
-3. Create directory: `reading-library/{slug}/`
-4. Use **Write** tool to save:
-   - `reading-library/{slug}/source.md` — full text
-   - `reading-library/{slug}/meta.json`:
+### Step 6: 写入元数据
+
+用 **Write** 写入 `reading-library/{slug}/meta.json`：
 
 ```json
 {
   "title": "...",
-  "author": "...",
+  "author": "...(从文本推断，未知则留空)",
   "type": "narrative|argument|model|reference",
   "language": "zh|en",
-  "tags": [],
+  "tags": ["从内容提取 3-5 个关键词"],
+  "slug": "...",
   "created_at": "ISO-8601",
-  "slug": "..."
+  "updated_at": "ISO-8601",
+  "status": "ingested",
+  "source_chars": 实际字符数,
+  "source_parts": 卷数,
+  "report_count": 0,
+  "original_path": "用户提供的原始路径或URL"
 }
 ```
 
-For texts > 80k chars, split into `source-01.md`, `source-02.md`, etc.
+### Step 7: 更新全局索引
+
+用 **Read** 读取 `reading-library/index.json`，追加新条目，用 **Write** 写回。
+
+### Step 8: 自动进入 Phase 2
+
+Ingest 完成后，**不等待用户指令**，直接进入 Phase 2 开始生成报告。
 
 ## Phase 2: Generate Reports
 
-Use **Read** tool to load the corresponding sub-skill template file from this skill's directory, then follow its instructions.
+**First**, generate `reading-library/{slug}/summary.md` — a one-page summary (200-500 words) covering core content, key takeaways, and navigation links to reports.
+
+**Then**, use **Read** tool to load the corresponding sub-skill template file from this skill's directory, and follow its instructions.
 
 | Type | Template File | Reports |
 |------|--------------|---------|
@@ -85,6 +135,8 @@ Use **Read** tool to load the corresponding sub-skill template file from this sk
 | reference | `reference-reader.md` | 6 reports |
 
 Use **Write** tool to save each report to `reading-library/{slug}/reports/{nn}-{name}.md`.
+
+After all reports are done, update `meta.json`: set `status` to `"analyzed"`, update `report_count` and `updated_at`.
 
 ### Key Principles
 - **一份报告只关注一个维度**，绝不交叉
@@ -113,10 +165,12 @@ After all reports are generated, add `## Cross-References` at the end of each re
 
 When user asks about a previously analyzed text:
 
+0. **Find document** → Use **Read** on `reading-library/index.json` to locate the slug, then read `meta.json`
 1. **Search reports** → Use **Grep** to find matching content in `reading-library/{slug}/reports/`
 2. **Search source** → Use **Read** / **Grep** on `source.md` if reports lack detail
 3. **Web search** → Use **WebSearch** for external context
-4. **Synthesize** answer:
+4. **Save Q&A** → Use **Write** to save the exchange to `reading-library/{slug}/qa/{date}-{topic}.md`
+5. **Synthesize** answer:
 
 ```markdown
 ## [精炼问题]
