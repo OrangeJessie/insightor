@@ -124,9 +124,27 @@ function stringifyContent(content: MessageContent | undefined): string {
 // Tool conversion: insightor Tools → OpenAI ChatCompletionTool[]
 // ---------------------------------------------------------------------------
 
+const OLLAMA_CORE_TOOLS = new Set([
+  'Bash', 'Read', 'Edit', 'Write', 'Glob', 'Grep',
+  'WebFetch', 'WebSearch', 'TodoWrite', 'AskUserQuestion',
+])
+
+function shouldIncludeTool(tool: { name: string }): boolean {
+  const allowlist = process.env.OLLAMA_TOOLS
+  if (allowlist) {
+    const names = new Set(allowlist.split(',').map(s => s.trim()))
+    return names.has(tool.name)
+  }
+  if (process.env.OLLAMA_ALL_TOOLS === '1') {
+    return true
+  }
+  return OLLAMA_CORE_TOOLS.has(tool.name)
+}
+
 async function convertTools(tools: Tools): Promise<ChatCompletionTool[]> {
   const result: ChatCompletionTool[] = []
   for (const tool of tools) {
+    if (!shouldIncludeTool(tool)) continue
     try {
       const description = await tool.prompt({
         getToolPermissionContext: async () => ({} as any),
