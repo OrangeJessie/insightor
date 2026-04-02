@@ -275,6 +275,7 @@ export async function* queryOllamaWithStreaming({
               usage: mapUsage(chunk.usage),
             },
           } as AssistantMessage
+          textContent = ''
         }
 
         // Yield each tool call as a separate AssistantMessage
