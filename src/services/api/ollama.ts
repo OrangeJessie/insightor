@@ -25,10 +25,14 @@ function convertMessages(
 ): ChatCompletionMessageParam[] {
   const out: ChatCompletionMessageParam[] = []
 
-  // system prompt
+  // system prompt — append /no_think when OLLAMA_DISABLE_THINKING is set
+  const disableThinking = process.env.OLLAMA_DISABLE_THINKING === '1'
   const systemText = systemPrompt.join('\n\n')
-  if (systemText) {
-    out.push({ role: 'system', content: systemText })
+  const systemContent = disableThinking
+    ? (systemText ? `${systemText}\n\n/no_think` : '/no_think')
+    : systemText
+  if (systemContent) {
+    out.push({ role: 'system', content: systemContent })
   }
 
   for (const msg of messages) {
