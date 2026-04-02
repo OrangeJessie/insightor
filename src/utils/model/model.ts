@@ -176,6 +176,11 @@ export function getRuntimeMainLoopModel(params: {
  * @returns The default model setting to use
  */
 export function getDefaultMainLoopModelSetting(): ModelName | ModelAlias {
+  // Ollama mode: read from OLLAMA_MODEL env var
+  if (getAPIProvider() === 'ollama') {
+    return process.env.OLLAMA_MODEL || 'qwen2.5'
+  }
+
   // Ants default to defaultModel from flag config, or Opus 1M if not configured
   if (process.env.USER_TYPE === 'ant') {
     return (
@@ -445,6 +450,11 @@ export function getPublicModelName(model: ModelName): string {
 export function parseUserSpecifiedModel(
   modelInput: ModelName | ModelAlias,
 ): ModelName {
+  // Ollama mode: pass through model names without alias mapping
+  if (getAPIProvider() === 'ollama') {
+    return modelInput.trim()
+  }
+
   const modelInputTrimmed = modelInput.trim()
   const normalizedModel = modelInputTrimmed.toLowerCase()
 

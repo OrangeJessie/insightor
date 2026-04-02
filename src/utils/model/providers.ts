@@ -1,16 +1,26 @@
 import type { AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS } from '../../services/analytics/index.js'
 import { isEnvTruthy } from '../envUtils.js'
 
-export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry'
+export type APIProvider = 'firstParty' | 'bedrock' | 'vertex' | 'foundry' | 'ollama'
 
 export function getAPIProvider(): APIProvider {
-  return isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
-    ? 'bedrock'
-    : isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX)
-      ? 'vertex'
-      : isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
-        ? 'foundry'
-        : 'firstParty'
+  return isEnvTruthy(process.env.CLAUDE_CODE_USE_OLLAMA)
+    ? 'ollama'
+    : isEnvTruthy(process.env.CLAUDE_CODE_USE_BEDROCK)
+      ? 'bedrock'
+      : isEnvTruthy(process.env.CLAUDE_CODE_USE_VERTEX)
+        ? 'vertex'
+        : isEnvTruthy(process.env.CLAUDE_CODE_USE_FOUNDRY)
+          ? 'foundry'
+          : 'firstParty'
+}
+
+export function getOllamaBaseUrl(): string {
+  return process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
+}
+
+export function getOllamaModel(): string {
+  return process.env.OLLAMA_MODEL || 'qwen2.5'
 }
 
 export function getAPIProviderForStatsig(): AnalyticsMetadata_I_VERIFIED_THIS_IS_NOT_CODE_OR_FILEPATHS {

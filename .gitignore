@@ -8,3 +8,7 @@ coverage
 .vscode
 *.suo
 *.lock
+
+# Reading library source texts (may be large / copyrighted)
+# Reports and meta.json are tracked; source files are gitignored
+reading-library/*/source*.md

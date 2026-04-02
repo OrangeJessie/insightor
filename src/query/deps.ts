@@ -1,7 +1,9 @@
 import { randomUUID } from 'crypto'
 import { queryModelWithStreaming } from '../services/api/claude.js'
+import { queryOllamaWithStreaming } from '../services/api/ollama.js'
 import { autoCompactIfNeeded } from '../services/compact/autoCompact.js'
 import { microcompactMessages } from '../services/compact/microCompact.js'
+import { getAPIProvider } from '../utils/model/providers.js'
 
 // -- deps
 
@@ -32,7 +34,9 @@ export type QueryDeps = {
 
 export function productionDeps(): QueryDeps {
   return {
-    callModel: queryModelWithStreaming,
+    callModel: getAPIProvider() === 'ollama'
+      ? queryOllamaWithStreaming
+      : queryModelWithStreaming,
     microcompact: microcompactMessages,
     autocompact: autoCompactIfNeeded,
     uuid: randomUUID,
