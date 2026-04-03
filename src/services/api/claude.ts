@@ -1798,6 +1798,19 @@ async function* queryModel(
         const params = paramsFromContext(context)
         captureAPIRequest(params, options.querySource) // Capture for bug reports
 
+        // >>> INSIGHTOR DEBUG: log full request to LLM
+        {
+          const { llmDebugRequest } = await import('src/utils/llmDebugLog.js')
+          llmDebugRequest('claude', {
+            model: params.model,
+            systemPrompt: params.system,
+            messages: params.messages as unknown[],
+            tools: params.tools as unknown[],
+            max_tokens: params.max_tokens,
+            betas: (params as any).betas,
+          })
+        }
+
         maxOutputTokens = params.max_tokens
 
         // Fire immediately before the fetch is dispatched. .withResponse() below
@@ -2207,6 +2220,14 @@ async function* queryModel(
                 research !== undefined && { research }),
               ...(advisorModel && { advisorModel }),
             }
+            // >>> INSIGHTOR DEBUG: log each response block
+            {
+              const { llmDebugResponse } = await import('src/utils/llmDebugLog.js')
+              llmDebugResponse('claude', {
+                content: m.message.content,
+                model: m.message.model,
+              })
+            }
             newMessages.push(m)
             yield m
             break
@@ -2246,6 +2267,16 @@ async function* queryModel(
             if (lastMsg) {
               lastMsg.message.usage = usage
               lastMsg.message.stop_reason = stopReason
+            }
+
+            // >>> INSIGHTOR DEBUG: log turn completion
+            {
+              const { llmDebugInfo } = await import('src/utils/llmDebugLog.js')
+              llmDebugInfo('claude_turn_complete', {
+                stop_reason: stopReason,
+                usage,
+                model: resolvedModel,
+              })
             }
 
             // Update cost

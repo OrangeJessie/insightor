@@ -650,6 +650,18 @@ async function* queryLoop(
     let attemptWithFallback = true
 
     queryCheckpoint('query_api_loop_start')
+
+    // >>> INSIGHTOR DEBUG: log turn start
+    {
+      const { llmDebugTurn } = await import('src/utils/llmDebugLog.js')
+      llmDebugTurn(tracking?.turnIndex ?? 0, {
+        message_count: messagesForQuery.length,
+        model: currentModel,
+        has_system_prompt: !!fullSystemPrompt,
+        tool_count: toolUseContext.options.tools.length,
+      })
+    }
+
     try {
       while (attemptWithFallback) {
         attemptWithFallback = false

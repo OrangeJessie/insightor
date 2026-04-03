@@ -201,6 +201,18 @@ export async function* queryOllamaWithStreaming({
   const openaiMessages = convertMessages(messages, systemPrompt)
   const openaiTools = await convertTools(tools)
 
+  // >>> INSIGHTOR DEBUG: log Ollama request
+  {
+    const { llmDebugRequest } = await import('src/utils/llmDebugLog.js')
+    llmDebugRequest('ollama', {
+      model,
+      systemPrompt,
+      messages: openaiMessages as unknown[],
+      tools: openaiTools as unknown[],
+      baseURL,
+    })
+  }
+
   // Accumulation state
   let textContent = ''
   const toolCallAccum: Map<number, {
@@ -260,6 +272,22 @@ export async function* queryOllamaWithStreaming({
 
       // When choice finishes, yield the assembled messages
       if (choice.finish_reason) {
+        // >>> INSIGHTOR DEBUG: log Ollama response
+        {
+          const { llmDebugResponse, llmDebugInfo } = await import('src/utils/llmDebugLog.js')
+          llmDebugResponse('ollama', {
+            content: textContent,
+            stopReason: choice.finish_reason,
+            usage: chunk.usage,
+            model,
+          })
+          if (toolCallAccum.size > 0) {
+            llmDebugInfo('ollama_tool_calls', {
+              tools: [...toolCallAccum.values()].map(tc => ({ name: tc.name, args_length: tc.arguments.length })),
+            })
+          }
+        }
+
         // Yield text block as AssistantMessage
         if (textContent) {
           yield {

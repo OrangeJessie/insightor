@@ -1204,6 +1204,12 @@ async function checkPermissionsAndCallTool(
     callInput = processedInput
   }
   try {
+    // >>> INSIGHTOR DEBUG: log tool call input
+    {
+      const { llmDebugToolCall } = await import('src/utils/llmDebugLog.js')
+      llmDebugToolCall(tool.name, callInput)
+    }
+
     const result = await tool.call(
       callInput,
       {
@@ -1222,6 +1228,12 @@ async function checkPermissionsAndCallTool(
     )
     const durationMs = Date.now() - startTime
     addToToolDuration(durationMs)
+
+    // >>> INSIGHTOR DEBUG: log tool result
+    {
+      const { llmDebugToolResult } = await import('src/utils/llmDebugLog.js')
+      llmDebugToolResult(tool.name, durationMs, result.data)
+    }
 
     // Log tool content/output as span event if enabled
     if (result.data && typeof result.data === 'object') {
