@@ -14,6 +14,41 @@ function isEnabled(): boolean {
   return enabled
 }
 
+/** Full system prompt + unclipped assistant/tool lines in log. */
+function isVerboseDebug(): boolean {
+  return (
+    process.env.INSIGHTOR_DEBUG_VERBOSE === '1' ||
+    process.env.INSIGHTOR_DEBUG_VERBOSE === 'true'
+  )
+}
+
+/** Optional: only log message index (char counts), not bodies — huge sessions. */
+function omitMessageBodies(): boolean {
+  return (
+    process.env.INSIGHTOR_DEBUG_OMIT_MESSAGE_BODIES === '1' ||
+    process.env.INSIGHTOR_DEBUG_OMIT_MESSAGE_BODIES === 'true'
+  )
+}
+
+const MAX_ASSISTANT_LOG = 24_000
+const MAX_TOOL_IO_LOG = 96_000
+
+function getMaxAssistant(): number {
+  return isVerboseDebug() ? Number.MAX_SAFE_INTEGER : MAX_ASSISTANT_LOG
+}
+
+function getMaxToolIo(): number {
+  return isVerboseDebug() ? Number.MAX_SAFE_INTEGER : MAX_TOOL_IO_LOG
+}
+
+function clipForLog(s: string, max: number): string {
+  if (max === Number.MAX_SAFE_INTEGER || s.length <= max) return s
+  return (
+    s.slice(0, max) +
+    `\n... [truncated at ${max} chars, total ${s.length}; INSIGHTOR_DEBUG_VERBOSE=1 removes this cap]`
+  )
+}
+
 function getLogFile(): string {
   if (logFilePath) return logFilePath
   const dir = join(process.cwd(), '.insightor-debug')
@@ -37,49 +72,55 @@ function write(entry: Record<string, unknown>) {
   switch (event) {
     case 'turn':
       text = `\n${'═'.repeat(80)}\n` +
-        `TURN #${entry.turn} — API round-trip starts  |  ${time}\n` +
+        `TURN #${entry.turn}  |  ${time}\n` +
         `${'═'.repeat(80)}\n` +
-        `  Model:          ${entry.model}\n` +
-        `  Prior messages: ${entry.message_count} (before this call)\n` +
-        `  Tools offered:  ${entry.tool_count} (names only in request log)\n`
+        `  Model: ${entry.model}  |  prior messages: ${entry.message_count}  |  tools registered: ${entry.tool_count}\n`
       break
 
-    case 'llm_request':
+    case 'llm_request': {
+      const sysRaw = formatDebugValue(entry.system_prompt)
+      const msgs = entry.messages as unknown[]
+      const msgSection = omitMessageBodies()
+        ? `  Messages (index only — unset INSIGHTOR_DEBUG_OMIT_MESSAGE_BODIES to log full conversation memory):\n${summarizeMessagesIndex(msgs)}`
+        : `  Conversation memory — full messages (${entry.message_count}) as sent to the model:\n${formatMessagesFull(msgs)}`
+      const sysSection = isVerboseDebug()
+        ? `  System / policy (full):\n${indent(sysRaw, 4)}\n`
+        : `  System / policy (static): [omitted ${sysRaw.length} chars — INSIGHTOR_DEBUG_VERBOSE=1 for full]\n`
       text = `\n${SEPARATOR}\n` +
         `>>> REQUEST → ${entry.provider}  |  ${time}\n` +
         `${SEPARATOR}\n` +
         `  Model: ${entry.model}\n` +
-        `  Context for the model — messages (${entry.message_count}):\n` +
-        formatMessagesFull(entry.messages as unknown[]) +
-        `${THIN_SEP}\n` +
-        `  System / policy (what the model is told besides messages):\n` +
-        `${indent(formatDebugValue(entry.system_prompt), 4)}\n` +
-        `  Tools offered this call: ${entry.tool_count} name(s), schemas omitted — ${(entry.tool_names as string[]).join(', ') || '(none)'}\n` +
+        msgSection +
+        `\n${THIN_SEP}\n` +
+        sysSection +
+        `  Tools registered (names): ${(entry.tool_names as string[]).join(', ') || '(none)'} (${entry.tool_count})\n` +
         formatRequestExtras(entry.request_extras)
       break
+    }
 
     case 'llm_response':
       text = `\n${SEPARATOR}\n` +
-        `<<< ASSISTANT OUTPUT (becomes model memory in the transcript) ← ${entry.provider}  |  ${time}\n` +
+        `<<< LLM REPLY  ← ${entry.provider}  |  ${time}\n` +
         `${SEPARATOR}\n` +
         `  Model: ${entry.model ?? '?'}\n` +
-        `  Stop Reason: ${entry.stop_reason ?? '?'}\n` +
-        `  Content (text / tool_use plan):\n${indent(String(entry.content_full), 4)}\n`
+        `  Stop: ${entry.stop_reason ?? '?'}\n` +
+        `  Output:\n${indent(clipForLog(String(entry.content_full), getMaxAssistant()), 4)}\n`
       if (entry.usage) {
         const u = entry.usage as any
-        text += `  Usage: input=${u.input_tokens ?? '?'} output=${u.output_tokens ?? '?'}\n`
+        text += `  Usage: in=${u.input_tokens ?? '?'} out=${u.output_tokens ?? '?'}\n`
       }
       break
 
     case 'tool_call':
       text = `\n${SEPARATOR}\n` +
-        `  🔧 TOOL USED (executed): ${entry.tool}  |  ${time}\n` +
-        `     Input passed to tool:\n${indent(String(entry.input), 8)}\n`
+        `  TOOL CALL: ${entry.tool}  |  ${time}\n` +
+        `  Input:\n${indent(clipForLog(String(entry.input), getMaxToolIo()), 4)}\n`
       break
 
     case 'tool_result':
-      text = `  ✅ TOOL OUTPUT (fed back toward the next LLM call): ${entry.tool}  (${entry.duration_ms}ms)  |  ${time}\n` +
-        `     Result:\n${indent(String(entry.result), 8)}\n`
+      text = `${SEPARATOR}\n` +
+        `  TOOL RESULT: ${entry.tool}  (${entry.duration_ms}ms)  |  ${time}\n` +
+        `  Output:\n${indent(clipForLog(String(entry.result), getMaxToolIo()), 4)}\n`
       break
 
     case 'info':
@@ -88,17 +129,18 @@ function write(entry: Record<string, unknown>) {
       delete rest.event
       delete rest.msg
       if (Object.keys(rest).length > 0) {
+        const cap = isVerboseDebug() ? Number.MAX_SAFE_INTEGER : 4_000
         text +=
           '  ' +
           Object.entries(rest)
-            .map(([k, v]) => `${k}=${formatDebugValue(v)}`)
+            .map(([k, v]) => `${k}=${clipForLog(formatDebugValue(v), cap)}`)
             .join('  ')
       }
       text += `  |  ${time}\n`
       break
 
     default:
-      text = `[${event}] ${formatDebugValue(entry)}  |  ${time}\n`
+      text = `[${event}] ${clipForLog(formatDebugValue(entry), 8_000)}  |  ${time}\n`
   }
 
   try {
@@ -118,10 +160,22 @@ function formatRequestExtras(extras: unknown): string {
   if (extras == null || typeof extras !== 'object') return ''
   const keys = Object.keys(extras as object)
   if (keys.length === 0) return ''
-  return `${THIN_SEP}\n  Request extras:\n${indent(formatDebugValue(extras), 4)}\n`
+  if (isVerboseDebug()) {
+    return `${THIN_SEP}\n  Request extras:\n${indent(formatDebugValue(extras), 4)}\n`
+  }
+  const parts = keys.map(k => {
+    const v = (extras as Record<string, unknown>)[k]
+    if (v !== null && typeof v === 'object') {
+      const ser = formatDebugValue(v)
+      return `${k}=<${ser.length} chars>`
+    }
+    const s = String(v)
+    return `${k}=${s.length > 80 ? `${s.slice(0, 80)}…` : s}`
+  })
+  return `  Extras: ${parts.join(' | ')}\n`
 }
 
-/** Full serialization for debug logs (no length limits). */
+/** Full serialization (internal / verbose). */
 export function formatDebugValue(val: unknown): string {
   if (val === null || val === undefined) return ''
   if (typeof val === 'string') return val
@@ -149,6 +203,93 @@ export function formatDebugValue(val: unknown): string {
       return String(val)
     }
   }
+}
+
+function summarizeArrayTextPartsLen(c: unknown): number {
+  if (!Array.isArray(c)) return 0
+  let n = 0
+  for (const b of c as Array<{ type?: string; text?: string }>) {
+    if (b?.type === 'text' && typeof b.text === 'string') n += b.text.length
+  }
+  return n
+}
+
+function summarizeContentBlocks(content: unknown): string {
+  if (typeof content === 'string') {
+    return `${content.length} chars (omitted)`
+  }
+  if (!Array.isArray(content)) {
+    const s = formatDebugValue(content)
+    return s.length > 300 ? `${s.length} chars serialized (omitted)` : s
+  }
+  const names: string[] = []
+  let textChars = 0
+  let toolResults = 0
+  for (const block of content as Array<{ type?: string; name?: string; text?: string }>) {
+    const t = block?.type
+    if (t === 'text' && typeof block.text === 'string') textChars += block.text.length
+    else if (t === 'tool_use') names.push(String(block.name ?? '?'))
+    else if (t === 'tool_result') toolResults++
+  }
+  const bits: string[] = []
+  if (textChars) bits.push(`text ${textChars} chars`)
+  if (names.length) bits.push(`tool_use: ${names.join(', ')}`)
+  if (toolResults) bits.push(`tool_result ×${toolResults}`)
+  return bits.length ? bits.join('; ') : 'empty'
+}
+
+function summarizeOneMessageForLog(m: unknown, index: number): string {
+  if (m == null || typeof m !== 'object') return `[${index}] ?`
+  const o = m as Record<string, unknown>
+
+  if (typeof o.type === 'string' && o.message && typeof o.message === 'object') {
+    const msg = o.message as Record<string, unknown>
+    const t = o.type
+    const c = msg.content
+    if (t === 'user') return `[${index}] user — ${summarizeContentBlocks(c)}`
+    if (t === 'assistant') return `[${index}] assistant — ${summarizeContentBlocks(c)}`
+    return `[${index}] ${t}`
+  }
+
+  if (typeof o.role === 'string') {
+    const role = o.role
+    if (role === 'tool') {
+      const id = String(o.tool_call_id ?? '')
+      const body = typeof o.content === 'string' ? o.content.length : 0
+      return `[${index}] tool — id ${id.slice(0, 12)}${id.length > 12 ? '…' : ''}, ${body} chars (omitted)`
+    }
+    if (role === 'assistant') {
+      const tc = o.tool_calls as Array<{ function?: { name?: string } }> | undefined
+      const tnames = Array.isArray(tc)
+        ? tc.map(x => x.function?.name).filter(Boolean).join(', ')
+        : ''
+      const c = o.content
+      const tlen =
+        typeof c === 'string' ? c.length : summarizeArrayTextPartsLen(c)
+      if (tnames) {
+        return `[${index}] assistant — tool_calls: ${tnames}` +
+          (tlen ? `; text ${tlen} chars` : '')
+      }
+      return `[${index}] assistant — text ${tlen} chars (omitted)`
+    }
+    if (role === 'user' || role === 'system') {
+      const c = o.content
+      const lab = role === 'system' ? 'system' : 'user'
+      if (typeof c === 'string') {
+        return `[${index}] ${lab} — ${c.length} chars (omitted)`
+      }
+      return `[${index}] ${lab} — ${summarizeContentBlocks(c)}`
+    }
+  }
+
+  return `[${index}] (unknown shape)`
+}
+
+function summarizeMessagesIndex(messages: unknown[]): string {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return '    (empty)\n'
+  }
+  return messages.map((m, i) => '    ' + summarizeOneMessageForLog(m, i)).join('\n') + '\n'
 }
 
 function formatMessagesFull(messages: unknown[]): string {
@@ -239,14 +380,14 @@ export function llmDebugResponse(provider: string, data: {
   } else if (Array.isArray(content)) {
     contentFull = content
       .map((block: any, bi: number) => {
-        if (block.type === 'text') return `(block ${bi} text)\n${block.text ?? ''}`
+        if (block.type === 'text') return `(text)\n${block.text ?? ''}`
         if (block.type === 'tool_use') {
-          return `(block ${bi} tool_use ${block.name})\n${formatDebugValue(block.input)}`
+          return `(tool_use ${block.name})\n${formatDebugValue(block.input)}`
         }
         if (block.type === 'thinking') {
-          return `(block ${bi} thinking)\n${block.thinking ?? ''}`
+          return `(thinking)\n${block.thinking ?? ''}`
         }
-        return `(block ${bi} ${block.type})\n${formatDebugValue(block)}`
+        return `(${block.type})\n${formatDebugValue(block)}`
       })
       .join('\n\n---\n\n')
   } else {
