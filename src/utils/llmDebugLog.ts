@@ -292,41 +292,68 @@ function summarizeMessagesIndex(messages: unknown[]): string {
   return messages.map((m, i) => '    ' + summarizeOneMessageForLog(m, i)).join('\n') + '\n'
 }
 
+/** Threshold: text blocks longer than this are collapsed to char-count only. */
+const LONG_TEXT_THRESHOLD = 500
+
+function briefText(s: string): string {
+  if (s.length <= LONG_TEXT_THRESHOLD) return s
+  const firstLine = s.slice(0, 120).split('\n')[0] ?? ''
+  return `${firstLine}… [${s.length} chars total]`
+}
+
 function formatMessagesFull(messages: unknown[]): string {
   if (!Array.isArray(messages) || messages.length === 0) {
     return '    (empty)\n'
   }
+  const verbose = isVerboseDebug()
   const parts: string[] = []
   for (let i = 0; i < messages.length; i++) {
     const m = messages[i] as any
     const role = m.role ?? m.type ?? '?'
     const content = m.content ?? m.message?.content
+
+    // System messages: always index-only unless verbose
+    if (role === 'system' && !verbose) {
+      const len = typeof content === 'string'
+        ? content.length
+        : formatDebugValue(content).length
+      parts.push(`    [${i}] system: [${len} chars]`)
+      continue
+    }
+
     let body: string
     if (typeof content === 'string') {
-      body = content
+      body = verbose ? content : briefText(content)
     } else if (Array.isArray(content)) {
       body = content
         .map((block: any, bi: number) => {
           const t = block?.type
-          if (t === 'text') return `(block ${bi} text)\n${block.text ?? ''}`
-          if (t === 'image_url') return `(block ${bi} image_url)\n${formatDebugValue(block)}`
+          if (t === 'text') {
+            const raw = block.text ?? ''
+            return verbose
+              ? `(block ${bi} text)\n${raw}`
+              : `(block ${bi} text) ${briefText(raw)}`
+          }
+          if (t === 'image_url') return `(block ${bi} image_url) [image]`
           if (t === 'tool_use') {
             return `(block ${bi} tool_use ${block.name})\n${formatDebugValue(block.input)}`
           }
           if (t === 'tool_result') {
             const c = block.content
-            const inner =
-              typeof c === 'string' ? c : formatDebugValue(c)
-            return `(block ${bi} tool_result id=${block.tool_use_id})\n${inner}`
+            const raw = typeof c === 'string' ? c : formatDebugValue(c)
+            return `(block ${bi} tool_result id=${block.tool_use_id})\n${raw}`
           }
           if (t === 'thinking') {
-            return `(block ${bi} thinking)\n${block.thinking ?? ''}`
+            const raw = block.thinking ?? ''
+            return verbose
+              ? `(block ${bi} thinking)\n${raw}`
+              : `(block ${bi} thinking) [${raw.length} chars]`
           }
-          return `(block ${bi} ${t ?? '?'})\n${formatDebugValue(block)}`
+          return `(block ${bi} ${t ?? '?'}) [${formatDebugValue(block).length} chars]`
         })
-        .join('\n\n')
+        .join('\n')
     } else if (content != null && typeof content === 'object') {
-      body = formatDebugValue(content)
+      body = verbose ? formatDebugValue(content) : `[object ${formatDebugValue(content).length} chars]`
     } else {
       body = formatDebugValue(content)
     }

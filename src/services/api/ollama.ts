@@ -257,13 +257,14 @@ export async function* queryOllamaWithStreaming({
   const openaiMessages = convertMessages(messages, systemPrompt)
   const openaiTools = await convertTools(tools)
 
-  // >>> INSIGHTOR DEBUG: log Ollama request
+  // >>> INSIGHTOR DEBUG: log Ollama request (use original messages, not
+  // openaiMessages which has the system prompt merged as messages[0])
   {
     const { llmDebugRequest } = await import('src/utils/llmDebugLog.js')
     llmDebugRequest('ollama', {
       model,
       systemPrompt,
-      messages: openaiMessages as unknown[],
+      messages: messages as unknown[],
       tools: openaiTools as unknown[],
       baseURL,
     })
