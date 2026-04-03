@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
+import { inspect } from 'util'
 
 let logFilePath: string | null = null
 let enabled: boolean | null = null
@@ -49,10 +50,12 @@ function write(entry: Record<string, unknown>) {
         `${SEPARATOR}\n` +
         `  Model: ${entry.model}\n` +
         `  Messages (${entry.message_count}):\n` +
-        formatMessages(entry.messages as any[]) +
+        formatMessagesFull(entry.messages as unknown[]) +
         `  Tools (${entry.tool_count}): ${(entry.tool_names as string[]).join(', ')}\n` +
+        `  Tools (full):\n${indent(formatDebugValue(entry.tools_raw), 4)}\n` +
         `${THIN_SEP}\n` +
-        `  System Prompt:\n${indent(String(entry.system_prompt), 4)}\n`
+        `  System Prompt:\n${indent(formatDebugValue(entry.system_prompt), 4)}\n` +
+        formatRequestExtras(entry.request_extras)
       break
 
     case 'llm_response':
@@ -61,7 +64,7 @@ function write(entry: Record<string, unknown>) {
         `${SEPARATOR}\n` +
         `  Model: ${entry.model ?? '?'}\n` +
         `  Stop Reason: ${entry.stop_reason ?? '?'}\n` +
-        `  Content:\n${indent(String(entry.content_summary), 4)}\n`
+        `  Content:\n${indent(String(entry.content_full), 4)}\n`
       if (entry.usage) {
         const u = entry.usage as any
         text += `  Usage: input=${u.input_tokens ?? '?'} output=${u.output_tokens ?? '?'}\n`
@@ -84,13 +87,17 @@ function write(entry: Record<string, unknown>) {
       delete rest.event
       delete rest.msg
       if (Object.keys(rest).length > 0) {
-        text += '  ' + Object.entries(rest).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join('  ')
+        text +=
+          '  ' +
+          Object.entries(rest)
+            .map(([k, v]) => `${k}=${formatDebugValue(v)}`)
+            .join('  ')
       }
       text += `  |  ${time}\n`
       break
 
     default:
-      text = `[${event}] ${JSON.stringify(entry)}  |  ${time}\n`
+      text = `[${event}] ${formatDebugValue(entry)}  |  ${time}\n`
   }
 
   try {
@@ -106,42 +113,84 @@ function indent(s: string, n: number): string {
   return s.split('\n').map(line => pad + line).join('\n')
 }
 
-function formatMessages(messages: any[]): string {
-  if (!Array.isArray(messages) || messages.length === 0) return '    (empty)\n'
-  return messages.map((m, i) => {
-    const role = m.role ?? '?'
-    const summary = m.summary ?? ''
-    return `    [${i}] ${role}: ${summary}`
-  }).join('\n') + '\n'
+function formatRequestExtras(extras: unknown): string {
+  if (extras == null || typeof extras !== 'object') return ''
+  const keys = Object.keys(extras as object)
+  if (keys.length === 0) return ''
+  return `${THIN_SEP}\n  Request extras:\n${indent(formatDebugValue(extras), 4)}\n`
 }
 
-function truncate(val: unknown, maxLen = 2000): string {
-  const s = typeof val === 'string' ? val : JSON.stringify(val)
-  if (!s) return ''
-  return s.length > maxLen ? s.slice(0, maxLen) + `...(truncated, total ${s.length})` : s
-}
-
-function summarizeMessages(messages: unknown[]): unknown[] {
-  if (!Array.isArray(messages)) return []
-  return messages.map((m: any) => {
-    const role = m.role ?? m.type ?? 'unknown'
-    const content = m.content ?? m.message?.content
-    let summary: string
-    if (typeof content === 'string') {
-      summary = truncate(content, 500)
-    } else if (Array.isArray(content)) {
-      summary = content.map((block: any) => {
-        if (block.type === 'text') return truncate(block.text, 300)
-        if (block.type === 'tool_use') return `[tool_use: ${block.name}(${truncate(JSON.stringify(block.input), 200)})]`
-        if (block.type === 'tool_result') return `[tool_result: ${block.tool_use_id} → ${truncate(block.content, 200)}]`
-        if (block.type === 'thinking') return `[thinking: ${truncate(block.thinking, 200)}]`
-        return `[${block.type}]`
-      }).join(' | ')
-    } else {
-      summary = truncate(content, 300)
+/** Full serialization for debug logs (no length limits). */
+export function formatDebugValue(val: unknown): string {
+  if (val === null || val === undefined) return ''
+  if (typeof val === 'string') return val
+  if (
+    typeof val === 'number' ||
+    typeof val === 'boolean' ||
+    typeof val === 'bigint'
+  ) {
+    return String(val)
+  }
+  if (val instanceof Error) {
+    return val.stack ?? val.message
+  }
+  try {
+    return JSON.stringify(val, null, 2)
+  } catch {
+    try {
+      return inspect(val, {
+        depth: null,
+        maxArrayLength: null,
+        maxStringLength: null,
+        breakLength: 120,
+      })
+    } catch {
+      return String(val)
     }
-    return { role, summary }
-  })
+  }
+}
+
+function formatMessagesFull(messages: unknown[]): string {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return '    (empty)\n'
+  }
+  const parts: string[] = []
+  for (let i = 0; i < messages.length; i++) {
+    const m = messages[i] as any
+    const role = m.role ?? m.type ?? '?'
+    const content = m.content ?? m.message?.content
+    let body: string
+    if (typeof content === 'string') {
+      body = content
+    } else if (Array.isArray(content)) {
+      body = content
+        .map((block: any, bi: number) => {
+          const t = block?.type
+          if (t === 'text') return `(block ${bi} text)\n${block.text ?? ''}`
+          if (t === 'image_url') return `(block ${bi} image_url)\n${formatDebugValue(block)}`
+          if (t === 'tool_use') {
+            return `(block ${bi} tool_use ${block.name})\n${formatDebugValue(block.input)}`
+          }
+          if (t === 'tool_result') {
+            const c = block.content
+            const inner =
+              typeof c === 'string' ? c : formatDebugValue(c)
+            return `(block ${bi} tool_result id=${block.tool_use_id})\n${inner}`
+          }
+          if (t === 'thinking') {
+            return `(block ${bi} thinking)\n${block.thinking ?? ''}`
+          }
+          return `(block ${bi} ${t ?? '?'})\n${formatDebugValue(block)}`
+        })
+        .join('\n\n')
+    } else if (content != null && typeof content === 'object') {
+      body = formatDebugValue(content)
+    } else {
+      body = formatDebugValue(content)
+    }
+    parts.push(`    [${i}] ${role}:\n${indent(body, 6)}`)
+  }
+  return parts.join('\n\n') + '\n'
 }
 
 export function llmDebugRequest(provider: string, data: {
@@ -152,17 +201,27 @@ export function llmDebugRequest(provider: string, data: {
   [key: string]: unknown
 }) {
   if (!isEnabled()) return
+  const {
+    model,
+    systemPrompt,
+    messages,
+    tools,
+    ...requestExtras
+  } = data as Record<string, unknown>
   write({
     event: 'llm_request',
     provider,
-    model: data.model,
-    system_prompt: truncate(data.systemPrompt, 3000),
-    messages: summarizeMessages(data.messages ?? []),
-    message_count: data.messages?.length ?? 0,
-    tool_names: Array.isArray(data.tools)
-      ? data.tools.map((t: any) => t.name ?? t.function?.name ?? '?')
+    model,
+    system_prompt: systemPrompt,
+    messages: (messages as unknown[]) ?? [],
+    message_count: Array.isArray(messages) ? messages.length : 0,
+    tool_names: Array.isArray(tools)
+      ? tools.map((t: any) => t.name ?? t.function?.name ?? '?')
       : [],
-    tool_count: data.tools?.length ?? 0,
+    tool_count: Array.isArray(tools) ? tools.length : 0,
+    tools_raw: Array.isArray(tools) ? tools : [],
+    request_extras:
+      Object.keys(requestExtras).length > 0 ? requestExtras : undefined,
   })
 }
 
@@ -174,24 +233,30 @@ export function llmDebugResponse(provider: string, data: {
 }) {
   if (!isEnabled()) return
   const content = data.content
-  let summary: string
+  let contentFull: string
   if (typeof content === 'string') {
-    summary = truncate(content, 3000)
+    contentFull = content
   } else if (Array.isArray(content)) {
-    summary = content.map((block: any) => {
-      if (block.type === 'text') return truncate(block.text, 1000)
-      if (block.type === 'tool_use') return `[tool_use: ${block.name}(${truncate(JSON.stringify(block.input), 500)})]`
-      if (block.type === 'thinking') return `[thinking: ${truncate(block.thinking, 500)}]`
-      return `[${block.type}]`
-    }).join(' | ')
+    contentFull = content
+      .map((block: any, bi: number) => {
+        if (block.type === 'text') return `(block ${bi} text)\n${block.text ?? ''}`
+        if (block.type === 'tool_use') {
+          return `(block ${bi} tool_use ${block.name})\n${formatDebugValue(block.input)}`
+        }
+        if (block.type === 'thinking') {
+          return `(block ${bi} thinking)\n${block.thinking ?? ''}`
+        }
+        return `(block ${bi} ${block.type})\n${formatDebugValue(block)}`
+      })
+      .join('\n\n---\n\n')
   } else {
-    summary = truncate(content, 1000)
+    contentFull = formatDebugValue(content)
   }
   write({
     event: 'llm_response',
     provider,
     model: data.model,
-    content_summary: summary,
+    content_full: contentFull,
     stop_reason: data.stopReason,
     usage: data.usage,
   })
@@ -202,7 +267,7 @@ export function llmDebugToolCall(toolName: string, input: unknown) {
   write({
     event: 'tool_call',
     tool: toolName,
-    input: truncate(input, 3000),
+    input: formatDebugValue(input),
   })
 }
 
@@ -212,7 +277,7 @@ export function llmDebugToolResult(toolName: string, durationMs: number, result:
     event: 'tool_result',
     tool: toolName,
     duration_ms: durationMs,
-    result: truncate(result, 3000),
+    result: formatDebugValue(result),
   })
 }
 

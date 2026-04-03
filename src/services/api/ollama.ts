@@ -37,17 +37,60 @@ function convertMessages(
 
   for (const msg of messages) {
     if (msg.type === 'user') {
-      const content = stringifyContent(msg.message?.content)
-      if (content) {
-        out.push({ role: 'user', content })
+      const raw = msg.message?.content
+      if (typeof raw === 'string') {
+        if (raw) out.push({ role: 'user', content: raw })
+        continue
       }
-    } else if (msg.type === 'assistant') {
+      if (Array.isArray(raw)) {
+        const blocks = raw as Array<{ type: string; [key: string]: unknown }>
+        const textParts: string[] = []
+        const toolResultBlocks: typeof blocks = []
+        for (const block of blocks) {
+          if (block.type === 'text' && typeof block.text === 'string') {
+            textParts.push(block.text)
+          } else if (block.type === 'tool_result') {
+            toolResultBlocks.push(block)
+          }
+        }
+        // OpenAI/Ollama: every `tool` reply must immediately follow the
+        // assistant message that contained the matching `tool_calls`. Never
+        // insert a `user` message between assistant and tool roles.
+        for (const block of toolResultBlocks) {
+          const resultContent = typeof block.content === 'string'
+            ? block.content
+            : Array.isArray(block.content)
+              ? (block.content as Array<{ type: string; text?: string }>)
+                  .filter(b => b.type === 'text')
+                  .map(b => b.text)
+                  .join('\n')
+              : JSON.stringify(block.content ?? '')
+          out.push({
+            role: 'tool',
+            tool_call_id: block.tool_use_id as string,
+            content: resultContent,
+          })
+        }
+        const userText = textParts.join('\n')
+        if (userText) out.push({ role: 'user', content: userText })
+        continue
+      }
+      const content = stringifyContent(raw as MessageContent | undefined)
+      if (content) out.push({ role: 'user', content })
+      continue
+    }
+
+    if (msg.type === 'assistant') {
       const contentArr = Array.isArray(msg.message?.content)
         ? (msg.message!.content as Array<{ type: string; [key: string]: unknown }>)
         : []
 
       const textParts: string[] = []
-      const toolCalls: OpenAI.Chat.ChatCompletionMessageParam extends { tool_calls?: infer T } ? NonNullable<T> extends Array<infer U> ? U[] : never : never = []
+      const toolCalls: Array<{
+        id: string
+        type: 'function'
+        function: { name: string; arguments: string }
+      }> = []
 
       for (const block of contentArr) {
         if (block.type === 'text' && typeof block.text === 'string') {
@@ -76,30 +119,11 @@ function convertMessages(
         const plain = textParts.join('') || stringifyContent(msg.message?.content)
         out.push({ role: 'assistant', content: plain || '' })
       }
-    } else if (msg.type === 'system') {
       continue
     }
 
-    // Handle tool_result blocks embedded in user messages
-    if (msg.type === 'user' && Array.isArray(msg.message?.content)) {
-      const blocks = msg.message!.content as Array<{ type: string; [key: string]: unknown }>
-      for (const block of blocks) {
-        if (block.type === 'tool_result') {
-          const resultContent = typeof block.content === 'string'
-            ? block.content
-            : Array.isArray(block.content)
-              ? (block.content as Array<{ type: string; text?: string }>)
-                  .filter(b => b.type === 'text')
-                  .map(b => b.text)
-                  .join('\n')
-              : JSON.stringify(block.content ?? '')
-          out.push({
-            role: 'tool',
-            tool_call_id: block.tool_use_id as string,
-            content: resultContent,
-          })
-        }
-      }
+    if (msg.type === 'system') {
+      continue
     }
   }
 
@@ -118,6 +142,38 @@ function stringifyContent(content: MessageContent | undefined): string {
       .join('')
   }
   return ''
+}
+
+/** One Anthropic-style assistant turn for storage + convertMessages (avoid consecutive assistant roles). */
+function buildAssistantContentBlocks(
+  textContent: string,
+  toolCallAccum: Map<number, { id: string; name: string; arguments: string }>,
+): Array<
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: unknown }
+> {
+  const blocks: Array<
+    | { type: 'text'; text: string }
+    | { type: 'tool_use'; id: string; name: string; input: unknown }
+  > = []
+  if (textContent) {
+    blocks.push({ type: 'text', text: textContent })
+  }
+  for (const [, tc] of toolCallAccum) {
+    let parsedInput: unknown
+    try {
+      parsedInput = JSON.parse(tc.arguments || '{}')
+    } catch {
+      parsedInput = tc.arguments || '{}'
+    }
+    blocks.push({
+      type: 'tool_use',
+      id: tc.id,
+      name: tc.name,
+      input: parsedInput,
+    })
+  }
+  return blocks
 }
 
 // ---------------------------------------------------------------------------
@@ -270,88 +326,83 @@ export async function* queryOllamaWithStreaming({
         }
       }
 
-      // When choice finishes, yield the assembled messages
+      // When choice finishes, yield one assistant message (text + all tool
+      // calls in a single content array) so round-tripped OpenAI messages
+      // stay valid: never two consecutive assistant roles without tool/user
+      // between them.
       if (choice.finish_reason) {
-        // >>> INSIGHTOR DEBUG: log Ollama response
+        const usage = mapUsage(chunk.usage)
+        const msgId = chunk.id || randomUUID()
+        const contentBlocks = buildAssistantContentBlocks(textContent, toolCallAccum)
+
         {
           const { llmDebugResponse, llmDebugInfo } = await import('src/utils/llmDebugLog.js')
           llmDebugResponse('ollama', {
-            content: textContent,
+            content:
+              contentBlocks.length > 0
+                ? contentBlocks
+                : textContent,
             stopReason: choice.finish_reason,
             usage: chunk.usage,
             model,
           })
           if (toolCallAccum.size > 0) {
             llmDebugInfo('ollama_tool_calls', {
-              tools: [...toolCallAccum.values()].map(tc => ({ name: tc.name, args_length: tc.arguments.length })),
+              tools: [...toolCallAccum.values()].map(tc => ({
+                id: tc.id,
+                name: tc.name,
+                arguments: tc.arguments,
+              })),
             })
           }
         }
 
-        // Yield text block as AssistantMessage
-        if (textContent) {
+        if (contentBlocks.length > 0) {
           yield {
             type: 'assistant',
             uuid: randomUUID(),
             timestamp: new Date().toISOString(),
             message: {
               role: 'assistant',
-              id: chunk.id || randomUUID(),
-              content: [{ type: 'text', text: textContent }],
+              id: msgId,
+              content: contentBlocks,
               model,
               stop_reason: mapFinishReason(choice.finish_reason),
-              usage: mapUsage(chunk.usage),
-            },
-          } as AssistantMessage
-          textContent = ''
-        }
-
-        // Yield each tool call as a separate AssistantMessage
-        for (const [, tc] of toolCallAccum) {
-          let parsedInput: unknown
-          try {
-            parsedInput = JSON.parse(tc.arguments || '{}')
-          } catch {
-            parsedInput = tc.arguments || '{}'
-          }
-
-          yield {
-            type: 'assistant',
-            uuid: randomUUID(),
-            timestamp: new Date().toISOString(),
-            message: {
-              role: 'assistant',
-              id: chunk.id || randomUUID(),
-              content: [{
-                type: 'tool_use',
-                id: tc.id,
-                name: tc.name,
-                input: parsedInput,
-              }],
-              model,
-              stop_reason: 'tool_use',
-              usage: mapUsage(chunk.usage),
+              usage,
             },
           } as AssistantMessage
         }
+
+        textContent = ''
+        toolCallAccum.clear()
       }
     }
 
-    // If stream ended without a finish_reason but we have accumulated content
-    if (textContent && toolCallAccum.size === 0) {
-      yield {
-        type: 'assistant',
-        uuid: randomUUID(),
-        timestamp: new Date().toISOString(),
-        message: {
-          role: 'assistant',
-          id: randomUUID(),
-          content: [{ type: 'text', text: textContent }],
-          model,
-          stop_reason: 'end_turn',
-          usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
-        },
-      } as AssistantMessage
+    // Stream ended without finish_reason on last chunk (unusual) — still emit
+    if (textContent || toolCallAccum.size > 0) {
+      const contentBlocks = buildAssistantContentBlocks(textContent, toolCallAccum)
+      if (contentBlocks.length > 0) {
+        yield {
+          type: 'assistant',
+          uuid: randomUUID(),
+          timestamp: new Date().toISOString(),
+          message: {
+            role: 'assistant',
+            id: randomUUID(),
+            content: contentBlocks,
+            model,
+            stop_reason: 'end_turn',
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+            },
+          },
+        } as AssistantMessage
+      }
+      textContent = ''
+      toolCallAccum.clear()
     }
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
