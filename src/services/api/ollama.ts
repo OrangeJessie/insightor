@@ -336,7 +336,7 @@ export async function* queryOllamaWithStreaming({
         const contentBlocks = buildAssistantContentBlocks(textContent, toolCallAccum)
 
         {
-          const { llmDebugResponse, llmDebugInfo } = await import('src/utils/llmDebugLog.js')
+          const { llmDebugResponse } = await import('src/utils/llmDebugLog.js')
           llmDebugResponse('ollama', {
             content:
               contentBlocks.length > 0
@@ -346,15 +346,6 @@ export async function* queryOllamaWithStreaming({
             usage: chunk.usage,
             model,
           })
-          if (toolCallAccum.size > 0) {
-            llmDebugInfo('ollama_tool_calls', {
-              tools: [...toolCallAccum.values()].map(tc => ({
-                id: tc.id,
-                name: tc.name,
-                arguments: tc.arguments,
-              })),
-            })
-          }
         }
 
         if (contentBlocks.length > 0) {

@@ -37,11 +37,11 @@ function write(entry: Record<string, unknown>) {
   switch (event) {
     case 'turn':
       text = `\n${'═'.repeat(80)}\n` +
-        `TURN #${entry.turn}  |  ${time}\n` +
+        `TURN #${entry.turn} — API round-trip starts  |  ${time}\n` +
         `${'═'.repeat(80)}\n` +
-        `  Model:    ${entry.model}\n` +
-        `  Messages: ${entry.message_count}\n` +
-        `  Tools:    ${entry.tool_count}\n`
+        `  Model:          ${entry.model}\n` +
+        `  Prior messages: ${entry.message_count} (before this call)\n` +
+        `  Tools offered:  ${entry.tool_count} (names only in request log)\n`
       break
 
     case 'llm_request':
@@ -49,22 +49,22 @@ function write(entry: Record<string, unknown>) {
         `>>> REQUEST → ${entry.provider}  |  ${time}\n` +
         `${SEPARATOR}\n` +
         `  Model: ${entry.model}\n` +
-        `  Messages (${entry.message_count}):\n` +
+        `  Context for the model — messages (${entry.message_count}):\n` +
         formatMessagesFull(entry.messages as unknown[]) +
-        `  Tools (${entry.tool_count}): ${(entry.tool_names as string[]).join(', ')}\n` +
-        `  Tools (full):\n${indent(formatDebugValue(entry.tools_raw), 4)}\n` +
         `${THIN_SEP}\n` +
-        `  System Prompt:\n${indent(formatDebugValue(entry.system_prompt), 4)}\n` +
+        `  System / policy (what the model is told besides messages):\n` +
+        `${indent(formatDebugValue(entry.system_prompt), 4)}\n` +
+        `  Tools offered this call: ${entry.tool_count} name(s), schemas omitted — ${(entry.tool_names as string[]).join(', ') || '(none)'}\n` +
         formatRequestExtras(entry.request_extras)
       break
 
     case 'llm_response':
       text = `\n${SEPARATOR}\n` +
-        `<<< RESPONSE ← ${entry.provider}  |  ${time}\n` +
+        `<<< ASSISTANT OUTPUT (becomes model memory in the transcript) ← ${entry.provider}  |  ${time}\n` +
         `${SEPARATOR}\n` +
         `  Model: ${entry.model ?? '?'}\n` +
         `  Stop Reason: ${entry.stop_reason ?? '?'}\n` +
-        `  Content:\n${indent(String(entry.content_full), 4)}\n`
+        `  Content (text / tool_use plan):\n${indent(String(entry.content_full), 4)}\n`
       if (entry.usage) {
         const u = entry.usage as any
         text += `  Usage: input=${u.input_tokens ?? '?'} output=${u.output_tokens ?? '?'}\n`
@@ -72,13 +72,14 @@ function write(entry: Record<string, unknown>) {
       break
 
     case 'tool_call':
-      text = `\n  🔧 TOOL CALL: ${entry.tool}  |  ${time}\n` +
-        `     Input:\n${indent(String(entry.input), 8)}\n`
+      text = `\n${SEPARATOR}\n` +
+        `  🔧 TOOL USED (executed): ${entry.tool}  |  ${time}\n` +
+        `     Input passed to tool:\n${indent(String(entry.input), 8)}\n`
       break
 
     case 'tool_result':
-      text = `  ✅ TOOL RESULT: ${entry.tool}  (${entry.duration_ms}ms)  |  ${time}\n` +
-        `     Output:\n${indent(String(entry.result), 8)}\n`
+      text = `  ✅ TOOL OUTPUT (fed back toward the next LLM call): ${entry.tool}  (${entry.duration_ms}ms)  |  ${time}\n` +
+        `     Result:\n${indent(String(entry.result), 8)}\n`
       break
 
     case 'info':
@@ -219,7 +220,6 @@ export function llmDebugRequest(provider: string, data: {
       ? tools.map((t: any) => t.name ?? t.function?.name ?? '?')
       : [],
     tool_count: Array.isArray(tools) ? tools.length : 0,
-    tools_raw: Array.isArray(tools) ? tools : [],
     request_extras:
       Object.keys(requestExtras).length > 0 ? requestExtras : undefined,
   })
