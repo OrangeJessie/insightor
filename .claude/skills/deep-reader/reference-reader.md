@@ -4,274 +4,254 @@
 
 ---
 
-## 需要生成的 6 份报告
+## L1: 节/主题单元穷举索引 — `L1-scenes.md`
+
+信息/工具类文本的「场景」= **主题单元**：每个小节中介绍一个概念、一个操作、或一组配置的片段。
+
+### 格式
+
+```markdown
+# L1 — 节/主题单元索引
+
+> 共 {N} 章/节, {M} 个主题单元
+
+---
+
+## §{N} {章节标题}
+
+### Unit {N}.1: {单元简名}
+- **类型**: 概念定义 | 操作步骤 | 配置参数 | 接口定义 | 示例 | 排障 | 最佳实践
+- **核心内容**: {1-2 句概括}
+- **前置依赖**: {需要先看哪个 Unit}
+- **关键术语**: {本节定义或使用的术语}
+- **关联命令/API**: {涉及的命令或接口}
+- **标签**: #{关键词1} #{关键词2}
+- **→ L2**: {关联报告}
+- **→ L3**: {关联洞察}
+```
+
+### 示例（Kubernetes Pod 文档）
+
+```markdown
+## §1 Pod Overview
+
+### Unit 1.1: Pod 定义
+- **类型**: 概念定义
+- **核心内容**: Pod 是 K8s 中最小可部署单元，包含一个或多个共享网络和存储的容器
+- **前置依赖**: —
+- **关键术语**: Pod, Container, shared namespace
+- **关联命令/API**: kubectl get pods
+- **标签**: #Pod #定义 #最小部署单元
+- **→ L2**: reports/01-architecture.md§Pod, reports/02-concepts.md§Pod
+
+### Unit 1.2: Multi-container Patterns
+- **类型**: 最佳实践
+- **核心内容**: Sidecar / Ambassador / Adapter 三种多容器模式
+- **前置依赖**: Unit 1.1
+- **关键术语**: Sidecar, Ambassador, Adapter, Init Container
+- **关联命令/API**: —
+- **标签**: #Sidecar #多容器 #设计模式 #Ambassador #Adapter
+- **→ L2**: reports/01-architecture.md§Patterns
+- **→ L3**: insights/insight-sidecar-vs-init.md
+```
+
+---
+
+## L2: 维度深度报告 — `reports/`
+
+### 4 份报告
 
 | File | Dimension | 聚焦点 |
 |------|-----------|--------|
-| `01-architecture.md` | 体系层 | 知识体系结构、层级关系、全局地图 |
-| `02-concepts.md` | 概念层 | 核心概念定义、术语表 |
-| `03-procedures.md` | 流程层 | 操作步骤、工作流、决策树 |
-| `04-specifications.md` | 规格层 | 技术参数、配置项、接口定义 |
-| `05-troubleshooting.md` | 排障层 | 常见问题、错误代码、排错指南 |
-| `06-quick-reference.md` | 速查层 | 备忘录、速查表、常用命令 |
+| `01-architecture.md` | 体系层 | 知识结构、模块依赖、阅读路径 |
+| `02-concepts.md` | 概念层 | 核心定义、术语辨析、概念关系图 |
+| `03-procedures.md` | 流程层 | 操作步骤、决策树、工作流 |
+| `04-specifications.md` | 规格层 | 参数、接口、配置项、兼容矩阵 |
 
----
-
-## 01 — 体系层 (Architecture)
-
-聚焦**整体怎么组织的**，知识地图和层级结构，不进入具体定义。
+每份报告末尾必须有 `## Section Anchors`：
 
 ```markdown
-## Knowledge Map (知识地图)
-
-```
-[Top-level Domain]
-├── [Area A]
-│   ├── [Sub-area A1]
-│   └── [Sub-area A2]
-├── [Area B]
-│   ├── [Sub-area B1]
-│   └── [Sub-area B2]
-└── [Area C]
-```
-
-## Module Dependency Graph
-哪些知识模块依赖其他模块：
-
-```
-[A] ──requires──→ [B]
-[C] ──extends──→ [A]
-[D] ──independent──
-```
-
-## Reading Paths (阅读路径)
-根据不同目标推荐的阅读顺序：
-
-| Goal | Recommended Path | Skip |
-|------|-----------------|------|
-| 快速入门 | Ch.1 → Ch.3 → Ch.7 | Ch.4-6 (高级) |
-| 深度掌握 | Ch.1-10 顺序 | — |
-| 查阅特定问题 | 索引 → 对应章节 | 其余 |
-
-## Scope & Coverage
-| Topic | Covered? | Depth | Location |
-|-------|----------|-------|----------|
-| ... | ✅/❌/Partial | Deep/Overview/Mention | §X |
+## Section Anchors
+- L1 §1§1.1 Pod 定义 → 本报告§Pod 核心概念来源
+- L1 §3§3.2 资源配额 → 本报告§Limits
 ```
 
 ---
 
-## 02 — 概念层 (Concepts)
+### 01 — 体系层 (Architecture)
 
-聚焦**关键词是什么意思**，精确定义和辨析，不做操作指导。
+聚焦**整体怎么组织的**。知识地图和依赖关系。
+
+```markdown
+## Knowledge Map
+[Top-level]
+├── [Area A]
+│   ├── [Sub A1]
+│   └── [Sub A2]
+└── [Area B]
+
+## Module Dependencies
+[A] ──requires──→ [B]
+[C] ──extends──→ [A]
+
+## Reading Paths
+| Goal | Path | Skip |
+|------|------|------|
+| 快速入门 | §1→§3→§7 | §4-6 |
+| 深度掌握 | 全部顺序 | — |
+
+## Coverage
+| Topic | Covered? | Depth | Location |
+|-------|----------|-------|----------|
+```
+
+---
+
+### 02 — 概念层 (Concepts)
+
+聚焦**关键词是什么意思**。
 
 ```markdown
 ## Core Glossary
-
-| Term | Definition | Category | Related Terms | Location |
-|------|-----------|----------|--------------|----------|
-| ... | ... | ... | ... | §X.X |
+| Term | Definition | Category | Related | Location |
+|------|-----------|----------|---------|----------|
 
 ## Concept Relationships
+[A] ──is-a──→ [B]
+[C] ──has-a──→ [D]
 
-```
-[Concept A] ──is-a──→ [Concept B]
-[Concept C] ──has-a──→ [Concept D]
-[Concept E] ──vs──→ [Concept F]
-```
+## Disambiguation
+| Term A | Term B | Key Difference |
+|--------|--------|---------------|
 
-## Disambiguation (易混淆概念)
-
-| Term A | Term B | Key Difference | Common Confusion |
-|--------|--------|---------------|-----------------|
-| ... | ... | ... | ... |
-
-## Acronyms & Abbreviations
-| Abbr | Full Form | Meaning |
-|------|-----------|---------|
-| ... | ... | ... |
+## Acronyms
+| Abbr | Full | Meaning |
+|------|------|---------|
 ```
 
 ---
 
-## 03 — 流程层 (Procedures)
+### 03 — 流程层 (Procedures)
 
-聚焦**怎么做**，操作步骤和工作流，不做概念解释。
+聚焦**怎么做**。操作步骤和决策树。
 
 ```markdown
 ## Procedure Index
-
 | ID | Procedure | Purpose | Prerequisite | Location |
 |----|-----------|---------|-------------|----------|
-| P01 | 初始安装 | 环境搭建 | — | §2.1 |
-| P02 | 配置认证 | 安全接入 | P01 complete | §2.3 |
 
-### P01 — 初始安装
-
+### P01 — {操作名}
 **Prerequisites**: ...
-
-**Steps**:
-1. ...
-2. ...
-3. ...
-
+**Steps**: 1. ... 2. ... 3. ...
 **Verification**: 如何确认成功
 **Rollback**: 如何回退
 
-## Decision Trees (决策树)
+## Decision Trees
+Q → A路径 / B路径
 
-```
-Q: 需要什么类型的部署？
-├── 单机 → P03
-├── 集群 → P04
-└── 云端 → P05
-```
-
-## Workflow Diagrams
-
-```
-[Input] → [Step A] → [Decision Point]
-                         ├── Yes → [Step B] → [Output 1]
-                         └── No  → [Step C] → [Output 2]
-```
-
-## Common Sequences (常用操作序列)
-| Scenario | Steps | Estimated Time |
-|----------|-------|---------------|
-| 日常维护 | P01→P03→P07 | 15min |
-| 故障恢复 | P02→P05→P08 | 30min |
+## Common Sequences
+| Scenario | Steps | Time |
+|----------|-------|------|
 ```
 
 ---
 
-## 04 — 规格层 (Specifications)
+### 04 — 规格层 (Specifications)
 
-聚焦**具体参数是什么**，精确数值和配置，不做操作指导。
+聚焦**具体参数是什么**。
 
 ```markdown
 ## Configuration Reference
-
 | Parameter | Type | Default | Range | Description | Location |
 |-----------|------|---------|-------|-------------|----------|
-| timeout | int | 30 | 1-3600 | 超时秒数 | §4.1 |
-| max_retries | int | 3 | 0-10 | 最大重试 | §4.1 |
 
 ## API / Interface Reference
+| Endpoint | Input | Output | Side Effects | Location |
+|----------|-------|--------|-------------|----------|
 
-| Endpoint/Function | Input | Output | Side Effects | Location |
-|-------------------|-------|--------|-------------|----------|
-| GET /api/v1/users | query params | User[] | none | §5.2 |
-
-## Data Formats
-
-| Format | Schema | Example | Constraints |
-|--------|--------|---------|------------|
-| Request body | `{name: string, age: int}` | `{"name":"A","age":1}` | age > 0 |
-
-## Version Compatibility Matrix
-
-| Version | Feature A | Feature B | Feature C | Breaking Changes |
-|---------|-----------|-----------|-----------|-----------------|
-| 1.0 | ✅ | ❌ | ❌ | — |
-| 2.0 | ✅ | ✅ | ❌ | API v1 deprecated |
+## Version Compatibility
+| Version | Feature A | Feature B | Breaking Changes |
+|---------|-----------|-----------|-----------------|
 
 ## Limits & Quotas
 | Resource | Limit | Soft/Hard | Workaround |
 |----------|-------|-----------|-----------|
-| ... | ... | ... | ... |
 ```
 
 ---
 
-## 05 — 排障层 (Troubleshooting)
+## L3: 原子洞察 — `insights/`
 
-聚焦**出了问题怎么办**，错误诊断和修复，不做正常流程描述。
+### 什么值得成为 L3（信息/工具类）
+
+- 文档中**未明说的陷阱**（踩坑经验）
+- 不同功能之间的**隐藏交互**
+- **最佳实践组合**（A+B+C 一起用的效果）
+- 版本间的**行为变化**
+- 与竞品/替代方案的**关键差异**
+
+---
+
+## INDEX: 分面倒排索引 — `index.md`
+
+信息/工具类使用 **4 个分面**：概念/术语、操作/命令、配置/参数、错误/排障。
 
 ```markdown
-## Error Code Reference
+# 分面索引
 
-| Code | Message | Cause | Fix | Location |
-|------|---------|-------|-----|----------|
-| E001 | Connection refused | 服务未启动 | 执行 P01 | §8.1 |
-| E002 | Auth failed | Token 过期 | 执行 P02 | §8.2 |
+> **Text**: {title} | **Type**: reference | **Updated**: {date}
 
-## Symptom → Diagnosis Map
+---
 
-| Symptom | Possible Causes | Diagnostic Steps | Resolution |
-|---------|----------------|-----------------|-----------|
-| 响应慢 | 1. 网络 2. 负载 3. 配置 | 1. ping 2. top 3. check config | ... |
+## 按概念/术语
 
-## FAQ (常见问题)
+### Pod
+- L1: §1§1.1(定义), §2§2.1(生命周期), §5§5.3(调度)
+- L2: 01-architecture.md§Pod, 02-concepts.md§Pod
+- L3: insight-pod-lifecycle-gotchas.md
 
-### Q: [常见问题1]?
-**A**: ...
-**Related**: E001, P03
+### Sidecar
+- L1: §1§1.2(模式), §4§4.2(示例)
+- L2: 02-concepts.md§Sidecar
+- L3: insights/insight-sidecar-vs-init.md
 
-### Q: [常见问题2]?
-**A**: ...
+## 按操作/命令
 
-## Known Issues & Workarounds
-| Issue | Affected Versions | Status | Workaround |
-|-------|------------------|--------|-----------|
-| ... | 2.0-2.3 | Open | ... |
+### kubectl get pods
+- L1: §3§3.1
+- L2: 03-procedures.md§P01
 
-## Diagnostic Commands Cheatsheet
-| Purpose | Command | Expected Output |
-|---------|---------|----------------|
-| 检查状态 | `xxx status` | `Running` |
-| 查看日志 | `xxx logs --tail 100` | 最近100行 |
+### kubectl exec
+- L1: §3§3.5
+- L2: 03-procedures.md§P04
+
+## 按配置/参数
+
+### resources.limits.cpu
+- L1: §2§2.3
+- L2: 04-specifications.md§Resources
+
+### restartPolicy
+- L1: §2§2.1
+- L2: 04-specifications.md§Lifecycle
+
+## 按错误/排障
+
+### CrashLoopBackOff
+- L1: §6§6.2
+- L2: (排障内容内联在 L1 和 L3 中)
+- L3: insight-crashloop-diagnosis.md
+
+### OOMKilled
+- L1: §6§6.4
+- L3: insight-oom-memory-limits.md
 ```
 
 ---
 
-## 06 — 速查层 (Quick Reference)
+## Cross-Reference Execution
 
-聚焦**一页纸备忘**，极致压缩的查阅卡片，不做解释。
-
-```markdown
-## Command Cheatsheet
-
-| Action | Command | Notes |
-|--------|---------|-------|
-| 启动 | `xxx start` | |
-| 停止 | `xxx stop --graceful` | 生产环境用 graceful |
-| 状态 | `xxx status -v` | -v 显示详情 |
-
-## Key Parameters (常用参数速查)
-
-| Param | Default | Recommended | When to Change |
-|-------|---------|-------------|---------------|
-| timeout | 30s | 60s for slow network | 网络延迟 >200ms |
-
-## Conversion Tables / Formulas
-| From | To | Formula |
-|------|----|---------|
-| ... | ... | ... |
-
-## Decision Quick-Guide
-```
-Need X? → Use A
-Need Y? → Use B
-Not sure? → Start with A, switch if [condition]
-```
-
-## File / Directory Map
-| Path | Purpose |
-|------|---------|
-| /etc/xxx/config.yaml | 主配置 |
-| /var/log/xxx/ | 日志目录 |
-
-## Keyboard Shortcuts / Hotkeys (if applicable)
-| Key | Action |
-|-----|--------|
-| Ctrl+C | 中断 |
-```
-
----
-
-## Cross-Reference Execution (信息/工具类专用)
-
-1. **体系 ↔ 概念**: `01-architecture.md` 知识模块 → `02-concepts.md` 覆盖是否完整
-2. **流程 ↔ 规格**: `03-procedures.md` 步骤中引用的参数 → `04-specifications.md` 中有定义
-3. **排障 ↔ 流程**: `05-troubleshooting.md` 修复步骤 → 引用 `03-procedures.md` 的具体操作
-4. **速查 ↔ 全部**: `06-quick-reference.md` 每条 → 标注来自哪份详细报告
+1. **体系 ↔ 概念**: 01 知识模块 → 02 术语覆盖完整性
+2. **流程 ↔ 规格**: 03 步骤中的参数 → 04 有定义
+3. **概念 ↔ 流程**: 02 术语 → 03 相关操作是否覆盖
+4. **L3 ↔ 规格**: 洞察中的陷阱 → 04 参数建议

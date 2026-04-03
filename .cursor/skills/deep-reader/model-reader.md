@@ -4,276 +4,246 @@
 
 ---
 
-## 需要生成的 7 份报告
+## L1: 章节/概念单元穷举索引 — `L1-scenes.md`
 
-| File | Dimension | 聚焦点 |
-|------|-----------|--------|
-| `01-models.md` | 模型层 | 核心框架/模型的结构化提取 |
-| `02-variables.md` | 变量层 | 关键变量、因果关系图 |
-| `03-assumptions.md` | 假设层 | 前提假设、适用边界、失效条件 |
-| `04-applications.md` | 应用层 | 场景映射、案例分析 |
-| `05-comparisons.md` | 对比层 | 同类模型对比、优劣势分析 |
-| `06-actionables.md` | 行动层 | 可操作建议、实践清单 |
-| `07-limitations.md` | 局限层 | 批判性分析、边界条件 |
+模型类文本的「场景」= **概念单元**：每个章节中引入一个模型、案例、或推导步骤的片段。
+
+### 格式
+
+```markdown
+# L1 — 章节/概念单元索引
+
+> 共 {N} 章, {M} 个概念单元
 
 ---
 
-## 01 — 模型层 (Models)
+## Ch.{N} {章名}
 
-聚焦**提出了什么框架**，精确提取模型结构，不做应用讨论。
+### Unit {N}.1: {单元简名}
+- **类型**: 模型定义 | 变量阐述 | 案例 | 推导 | 对比 | 总结 | 应用指南
+- **核心内容**: {1-2 句概括}
+- **涉及模型**: {模型 ID, 如 F01}
+- **涉及变量**: {变量 ID, 如 V01, V03}
+- **案例**: {如有，标注案例名}
+- **标签**: #{关键词1} #{关键词2}
+- **→ L2**: {关联报告}
+- **→ L3**: {关联洞察}
+```
+
+### 示例（《好战略坏战略》）
+
+```markdown
+## Ch.1 好战略出人意料
+
+### Unit 1.1: 坏战略的四大特征
+- **类型**: 模型定义（反面）
+- **核心内容**: 坏战略的标志：空话、不直面挑战、把目标当战略、错误的战略目标
+- **涉及模型**: F00(坏战略诊断)
+- **涉及变量**: —
+- **案例**: 某企业"愿景战略"
+- **标签**: #坏战略 #四大特征 #空话
+- **→ L2**: reports/01-models.md§F00
+- **→ L3**: insights/insight-bad-strategy-signs.md
+
+### Unit 1.2: 好战略的内核（The Kernel）
+- **类型**: 模型定义（核心）
+- **核心内容**: 好战略由三要素构成：诊断 → 指导方针 → 协调行动
+- **涉及模型**: F01(The Kernel)
+- **涉及变量**: V01(诊断精确度), V02(方针聚焦度)
+- **案例**: —
+- **标签**: #好战略 #内核 #Kernel #诊断 #指导方针 #协调行动
+- **→ L2**: reports/01-models.md§F01, reports/02-variables.md§V01
+```
+
+---
+
+## L2: 维度深度报告 — `reports/`
+
+### 5 份报告
+
+| File | Dimension | 聚焦点 |
+|------|-----------|--------|
+| `01-models.md` | 模型层 | 核心框架的结构化提取和可视化 |
+| `02-variables.md` | 变量层 | 关键变量、因果图、反馈回路 |
+| `03-assumptions.md` | 假设层 | 前提假设、适用边界、失效条件 |
+| `04-applications.md` | 应用层 | 场景映射、案例分析、决策流程 |
+| `05-comparisons.md` | 对比层 | 同类模型对比、互补性、演化谱系 |
+
+每份报告末尾必须有 `## Chapter Anchors`：
+
+```markdown
+## Chapter Anchors
+- L1 Ch.1§1.2 The Kernel → 本报告§F01 的核心定义来源
+- L1 Ch.4§4.3 西南航空 → 本报告§Application-A01
+```
+
+---
+
+### 01 — 模型层 (Models)
+
+聚焦**提出了什么框架**。精确提取结构，不做应用讨论。
 
 ```markdown
 ## Model Inventory
 
-| ID | Model Name | Type | Core Idea (一句话) | Location |
-|----|-----------|------|-------------------|----------|
-| F01 | 五力模型 | Matrix/Framework | 行业竞争由五种力量决定 | Ch.2 |
-| F02 | 价值链 | Process/Flow | 价值通过一系列活动创造 | Ch.3 |
+| ID | Name | Type | Core Idea | Location |
+|----|------|------|-----------|----------|
+| F01 | The Kernel | Process | 诊断→指导方针→协调行动 | Ch.1-3 |
+| F02 | 价值链 | Flow | 价值通过活动链条创造 | Ch.5 |
 
-### F01 — 五力模型 (Five Forces)
+### F01 — The Kernel
 
-**Visual Representation:**
-```
-        [新进入者威胁]
-              │
-[供应商议价] ← [行业竞争] → [买方议价]
-              │
-        [替代品威胁]
-```
+**Visual:**
+[Diagnosis] → [Guiding Policy] → [Coherent Actions]
 
 **Components:**
-| Component | Definition | Measurement Indicators |
-|-----------|-----------|----------------------|
-| 行业内竞争 | ... | 集中度、增长率、差异化 |
-| 新进入者 | ... | 进入壁垒高低 |
-| ... | ... | ... |
+| Component | Definition | Measurement |
+|-----------|-----------|-------------|
 
-**Mathematical Form (if any):**
-- Formal: ...
-- Simplified: ...
-
-**Key Relationships between Components:**
-- A ↑ → B ↓ (逆向关系)
-- C ∝ D (正比)
+**Mathematical Form (if any):** ...
+**Key Relationships:** A ↑ → B ↑ (正向)
 ```
 
 ---
 
-## 02 — 变量层 (Variables)
+### 02 — 变量层 (Variables)
 
-聚焦**什么影响什么**，因果关系和变量清单，不做假设分析。
+聚焦**什么影响什么**。因果关系和反馈回路。
 
 ```markdown
 ## Variable Registry
-
-| ID | Variable | Type | Unit/Scale | Controllable? | In Model |
-|----|----------|------|-----------|---------------|----------|
-| V01 | 市场集中度 | Independent | HHI指数 | No | F01 |
-| V02 | 进入壁垒 | Moderator | High/Med/Low | Partially | F01 |
+| ID | Variable | Type | Scale | Controllable? | In Model |
+|----|----------|------|-------|---------------|----------|
 
 ## Causal Map
-
-```
-[V01 市场集中度] ──(+)──→ [V03 利润率]
-       ↑                        ↑
-  [V02 进入壁垒] ──(+)──→ [V04 定价权]
-```
+[V01] ──(+)──→ [V03] ← ──(-)── [V02]
 
 ## Feedback Loops
-| Loop ID | Variables | Direction | Type |
-|---------|-----------|-----------|------|
-| FL01 | V03→V05→V01 | Reinforcing | 正反馈 |
-| FL02 | V04→V06→V02 | Balancing | 负反馈 |
-
-## Key Metrics the Author Uses
-| Metric | Definition | How Measured | Where Used |
-|--------|-----------|-------------|-----------|
-| ... | ... | ... | Ch.X |
+| Loop | Variables | Direction | Type |
+|------|-----------|-----------|------|
 ```
 
 ---
 
-## 03 — 假设层 (Assumptions)
+### 03 — 假设层 (Assumptions)
 
-聚焦**在什么前提下成立**，边界条件和隐含假设，不做对比。
+聚焦**在什么前提下成立**。
 
 ```markdown
-## Explicit Assumptions (作者明确声明的)
-
+## Explicit Assumptions
 | ID | Assumption | Location | Type |
 |----|-----------|----------|------|
-| A01 | 参与者是理性的 | §1.2 | Behavioral |
-| A02 | 市场信息对称 | §2.1 | Structural |
 
-## Implicit Assumptions (未声明但逻辑依赖的)
-
+## Implicit Assumptions
 | ID | Assumption | Inferred From | Risk if Violated |
 |----|-----------|---------------|-----------------|
-| A03 | 静态分析(不考虑动态博弈) | 模型无时间维度 | 模型失效 |
 
-## Boundary Conditions (适用边界)
-
+## Boundary Conditions
 | Condition | Within Scope | Out of Scope |
 |-----------|-------------|-------------|
-| 行业类型 | 传统制造业 | 平台经济? |
-| 地理 | 西方市场 | 新兴市场? |
-| 时间尺度 | 中期(3-5年) | 短期波动 |
 
-## Failure Modes (什么情况下模型崩溃)
-1. 当 [A01] 被违反时 → 模型预测偏差方向: ...
-2. 当 [A03] 被违反时 → ...
+## Failure Modes
+1. 当 [A01] 被违反 → ...
 ```
 
 ---
 
-## 04 — 应用层 (Applications)
+### 04 — 应用层 (Applications)
 
-聚焦**怎么用**，场景映射和案例，不做理论批判。
+聚焦**怎么用**。场景映射和案例。
 
 ```markdown
 ## Application Scenarios
+| Scenario | Model(s) | How to Apply | Expected Outcome |
+|----------|----------|-------------|-----------------|
 
-| Scenario | Applicable Model(s) | How to Apply | Expected Outcome |
-|----------|---------------------|-------------|-----------------|
-| 进入新市场 | F01(五力) | 分析五力 → 评估吸引力 | 市场选择决策 |
-| 成本优化 | F02(价值链) | 识别低效活动 | 降本X% |
+## Cases from the Book
+| Case | Chapter | Model | Outcome | Insight |
+|------|---------|-------|---------|---------|
 
-## Case Studies from the Book
-
-| Case | Chapter | Model Applied | Outcome | Key Insight |
-|------|---------|--------------|---------|-------------|
-| 西南航空 | Ch.4 | F02 | 低成本领导者 | 活动系统的一致性 |
-
-## Decision Flowchart (if applicable)
-
-```
-Start: 面临战略选择
-  │
-  ├─ Q1: 行业吸引力? → Use F01
-  │   ├─ 高 → Q2
-  │   └─ 低 → 考虑退出
-  │
-  └─ Q2: 竞争优势来源? → Use F02
-      ├─ 成本 → 成本领先战略
-      └─ 差异化 → 差异化战略
-```
+## Decision Flowchart
+Start → Q1 → Use F01 → Q2 → Use F02
 
 ## Adaptation Guide
-将书中模型适配到不同情境时需要修改的参数/假设：
-| Context Change | What to Adjust | How |
-|---------------|---------------|-----|
-| 从制造到互联网 | V02(进入壁垒)定义 | 网络效应替代资本壁垒 |
+| Context Change | Adjust | How |
+|---------------|--------|-----|
 ```
 
 ---
 
-## 05 — 对比层 (Comparisons)
+### 05 — 对比层 (Comparisons)
 
-聚焦**和其他模型比怎么样**，横向对比，不做应用建议。
+聚焦**和其他模型比怎么样**。
 
 ```markdown
-## Model Comparison Matrix
+## Comparison Matrix
+| Dimension | This Book | Alternative A | Alternative B |
+|-----------|----------|---------------|---------------|
 
-| Dimension | This Book's Model | Alternative A | Alternative B |
-|-----------|------------------|---------------|---------------|
-| 核心单位 | 行业 | 资源(RBV) | 生态系统 |
-| 分析焦点 | 外部竞争力量 | 内部能力 | 共生关系 |
-| 时间观 | 静态快照 | 动态积累 | 共演化 |
-| 适用场景 | 成熟行业 | 资源型企业 | 平台经济 |
-| 主要盲点 | 忽视内部能力 | 忽视外部环境 | 难以量化 |
+## Complementarity
+- F01 + RBV → 外部+内部匹配
 
-## Complementarity Map (互补性)
-哪些模型可以组合使用：
-- F01 + RBV → 外部机会 + 内部能力匹配
-- F02 + 蓝海战略 → 价值创新
-
-## Evolution / Genealogy
-```
-[Bain's SCP范式 (1956)]
-       │
-       ▼
-[Porter's 五力 (1979)] ──→ [Dynamic Capabilities (1997)]
-       │
-       ▼
-[Value Chain (1985)]
-```
+## Evolution Genealogy
+[Predecessor] → [This Model] → [Successor]
 ```
 
 ---
 
-## 06 — 行动层 (Actionables)
+## L3: 原子洞察 — `insights/`
 
-聚焦**读完之后做什么**，实践清单，不做理论分析。
+### 什么值得成为 L3（模型类）
+
+- 模型在**意外场景**中的适用性发现
+- 假设被现实违反的**反例**
+- 不同模型之间的**隐藏矛盾**或**意外互补**
+- **可操作的组合策略**（A模型+B模型→新应用）
+- 模型在新时代（如 AI 时代）的**失效或变形**
+
+---
+
+## INDEX: 分面倒排索引 — `index.md`
+
+模型类使用 **4 个分面**：模型/框架、变量/概念、案例、行业/场景。
 
 ```markdown
-## Quick-Start Checklist
-从本书提取的可立即执行的行动：
+# 分面索引
 
-- [ ] **Action 1**: 用五力框架分析你所在行业 (Template: ...)
-- [ ] **Action 2**: 绘制你的价值链，标注成本占比
-- [ ] **Action 3**: 识别你的活动系统中的不一致点
+> **Text**: {title} | **Type**: model | **Updated**: {date}
 
-## Implementation Templates
+---
 
-### Template: Five Forces Analysis
-| Force | Current State | Trend | Your Response |
-|-------|-------------|-------|---------------|
-| 行业竞争 | | | |
-| 新进入者 | | | |
-| ... | | | |
+## 按模型/框架
 
-## Pitfalls to Avoid
-作者警告或暗示的常见错误：
-1. ❌ ...
-   ✅ Instead: ...
+### F01: The Kernel (好战略内核)
+- L1: Ch.1§1.2(定义), Ch.3§3.1(展开), Ch.8§8.2(案例)
+- L2: 01-models.md§F01, 02-variables.md§V01-V03
+- L3: insight-kernel-in-practice.md
 
-## Reading Path Recommendations
-读完本书后建议的延伸阅读：
-| Book/Paper | Why Read | Relationship |
-|-----------|---------|-------------|
-| ... | 补充内部能力视角 | 互补 |
+## 按变量/概念
+
+### 诊断精确度 (V01)
+- L1: Ch.1§1.2, Ch.4§4.1
+- L2: 02-variables.md§V01, 03-assumptions.md§A01
+
+## 按案例
+
+### 西南航空
+- L1: Ch.4§4.3
+- L2: 04-applications.md§Case-A01
+- L3: insight-southwest-coherence.md
+
+## 按行业/场景
+
+### 科技行业
+- L1: Ch.6§6.2, Ch.9§9.1
+- L2: 04-applications.md§Scenario-S03
 ```
 
 ---
 
-## 07 — 局限层 (Limitations)
+## Cross-Reference Execution
 
-聚焦**哪里不够好**，批判性分析，不提供替代方案（那是对比层的事）。
-
-```markdown
-## Author's Acknowledged Limitations
-1. ...
-
-## Unacknowledged Limitations
-
-| ID | Limitation | Type | Severity | Evidence |
-|----|-----------|------|----------|----------|
-| LM01 | 忽略动态竞争 | Scope | High | 模型无时间轴 |
-| LM02 | 西方市场偏见 | Bias | Medium | 案例全部来自欧美 |
-
-## Logical Gaps
-论证中跳过的步骤或不充分推理：
-1. §X.X: 从 [前提A] 直接跳到 [结论B]，缺少 ...
-
-## Empirical Challenges
-| Model Prediction | Real-world Counterexample | Source |
-|-----------------|--------------------------|--------|
-| 五力低→低利润 | 平台企业在高竞争中高利润 | [ref] |
-
-## Temporal Validity
-模型在不同时代的适用性变化：
-| Era | Applicable? | Why |
-|-----|-----------|-----|
-| 工业时代 | ✅ | 模型为此设计 |
-| 数字时代 | ⚠️ | 网络效应改变竞争逻辑 |
-```
-
----
-
-## Cross-Reference Execution (模型类专用)
-
-1. **模型 ↔ 变量**: `01-models.md` 框架组件 → `02-variables.md` 变量是否完备
-2. **假设 ↔ 局限**: `03-assumptions.md` 隐含假设 → `07-limitations.md` 失效分析
-3. **应用 ↔ 假设**: `04-applications.md` 场景 → 检查 `03-assumptions.md` 边界是否被突破
-4. **对比 ↔ 局限**: `05-comparisons.md` 盲点 → 验证 `07-limitations.md` 的批判
-5. **行动 ↔ 假设**: `06-actionables.md` 清单 → 确保在 `03-assumptions.md` 适用范围内
+1. **模型 ↔ 变量**: 01 组件 → 02 变量完备性检查
+2. **假设 ↔ 应用**: 03 边界 → 04 场景是否超出边界
+3. **对比 ↔ 假设**: 05 替代模型 → 03 本模型盲点验证
+4. **应用 ↔ 假设**: 04 行动清单 → 03 适用范围约束

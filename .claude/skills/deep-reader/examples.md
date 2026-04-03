@@ -1,153 +1,188 @@
-# Examples — 四类文本深度阅读示例
+# Examples — 四类文本深度阅读示例（三层架构）
 
 ---
 
-## 1. 叙事类 (Narrative) — 《红楼梦》
+## 1. 叙事类 (Narrative) — 《红楼梦》第 27 回
 
 ### 触发
-> 帮我深度阅读《红楼梦》第一回
+> 帮我深度阅读《红楼梦》
 
-### Agent 行为
-1. 分类 → `narrative` / `novel`
-2. 存储 → `reading-library/hong-lou-meng-ch01/`
-3. 读取 `narrative-reader.md` → 生成 7 份报告
+### 目录结构
+```
+reading-library/hong-lou-meng/
+├── meta.json
+├── summary.md
+├── index.md          ← 分面索引（人物/场景/主题/意象）
+├── L1-scenes.md      ← 120回穷举索引
+├── reports/
+│   ├── 01-entities.md
+│   ├── 02-symbols.md
+│   ├── 03-structure.md
+│   ├── 04-rules.md
+│   ├── 05-themes.md
+│   └── 06-style.md
+├── insights/
+│   ├── insight-baochai-mask.md
+│   ├── insight-daiyu-flower-burial.md
+│   └── ...
+├── qa/
+└── source-01.md ... source-15.md
+```
 
-### 报告示例片段
+### L1 示例片段
 
-**01-entities.md**:
-```
-| C01 | 甄士隐 | — | 乡绅 | 通灵玉(间接) | — | 第1回 |
-| C02 | 贾雨村 | — | 落魄书生→官员 | — | — | 第1回 |
+```markdown
+## Ch.27 滴翠亭杨妃戏彩蝶 埋香冢飞燕泣残红
+
+### 场景 27.1: 宝钗扑蝶
+- **地点**: 大观园花丛 → 滴翠亭外
+- **人物**: 薛宝钗(C03)
+- **事件**: 宝钗在花丛中追逐一对玉色蝴蝶
+- **关键意象**: 蝴蝶、团扇
+- **情绪基调**: 天真烂漫（表层）
+- **名场面标签**: #宝钗扑蝶 #戏彩蝶 #蝴蝶
+- **→ L2**: reports/02-symbols.md§蝴蝶
+- **→ L3**: insights/insight-baochai-mask.md
 ```
 
-**02-symbols.md**:
-```
-| 甄士隐 | 真事隐 | 真事被隐去 | 开篇叙事声明 |
-| 贾雨村 | 假语存 | 假语村言 | 与甄对偶 |
+### INDEX 示例片段
+
+```markdown
+## 按关键场景
+
+### 宝钗扑蝶
+- L1: Ch.27§27.1
+- L2: 02-symbols.md§蝴蝶, 06-style.md§反讽
+- L3: insight-baochai-mask.md
 ```
 
-**03-structure.md**:
-```
-Mirror Group M01: 甄家(缩影) ↔ 贾家(全景) — 命运预演
+### L3 示例
+
+```markdown
+# 宝钗扑蝶：天真面具下的精明本能
+
+> **Tags**: #宝钗 #扑蝶 #Ch27 #伪装 #滴翠亭
+> **Related**: [[L1-scenes.md#Ch.27]], [[reports/02-symbols.md#蝴蝶]], [[insight-golden-lock.md]]
+> **Source**: 红楼梦
+
+宝钗追蝶的画面是全书最具视觉冲击力的"天真"场景，
+但紧接着的滴翠亭偷听→嫁祸黛玉，暴露了她本能的自保算计。
+两个行为在同一回中并置，构成曹雪芹对宝钗最精妙的双面刻画。
+
+> 📖 "宝钗意欲扑了来玩耍……一双迎风翩跹的玉色蝴蝶……"
+> — *source-03.md, 第27回*
+
+> 📖 "宝钗在外面听见这话，心中吃惊……便使个金蝉脱壳的法子……"
+> — *source-03.md, 第27回*
+
+## 逻辑链条
+- [实体] C03 宝钗 → [符号] 蝴蝶=天真表象 → [规则] 嫁祸=阶级自保 → [主题] 真与伪
 ```
 
 ### 问答示例
-> Q: 甄士隐和贾雨村的名字有什么关联？
 
-```markdown
-## 甄士隐与贾雨村的名字关联
+> Q: 红楼梦里扑蝶是怎么回事？
 
-### 发现
-二人构成叙事框架的对偶声明：「真事隐」去，「假语存」焉。
-
-### 证据链
-- **原文**: source.md 第1回 — "因曾历过一番梦幻之后，故将真事隐去"
-- **报告**: 02-symbols.md § Homophonic — 谐音对照表
-- **报告**: 01-entities.md § C01, C02 — 二人身份对比
-
-### 深层解读
-这不仅是文字游戏，而是全书的叙事契约。作者开宗明义告诉读者：
-你读到的故事表面是"假语"，真相被有意遮蔽。
-
-### 延伸问题
-- 甄士隐在后文的消失是否象征"真相"被彻底压抑？
-```
+Agent 检索流程：
+1. Grep `index.md` → 命中「宝钗扑蝶」→ L1:Ch.27§27.1, L3:insight-baochai-mask.md
+2. Read `insights/insight-baochai-mask.md` → 现成分析
+3. Read `L1-scenes.md` § Ch.27 → 场景上下文
+4. Grep `source-03.md` → 原文精确引用
+5. WebSearch `"红楼梦 宝钗扑蝶 滴翠亭"` → 外部解读
 
 ---
 
 ## 2. 论证类 (Argument) — "Attention Is All You Need"
 
-### 触发
-> Read and analyze this paper: Attention Is All You Need
-
-### Agent 行为
-1. 分类 → `argument` / `academic-paper`
-2. 存储 → `reading-library/attention-is-all-you-need/`
-3. 读取 `argument-reader.md` → 生成 7 份报告
-
-### 报告示例片段
-
-**01-core-claims.md**:
+### 目录结构
 ```
-## Central Thesis
-注意力机制alone（无需 RNN/CNN）即可在序列转换任务上达到 SOTA。
-
-### Claim 1: Self-attention 可替代 recurrence
-- Original: "dispensing with recurrence and convolutions entirely"
-- Scope: 序列到序列任务（MT, 摘要等）
+reading-library/attention-is-all-you-need/
+├── meta.json
+├── summary.md
+├── index.md          ← 分面索引（论点/术语/方法/学者）
+├── L1-scenes.md      ← 段落论证单元穷举
+├── reports/
+│   ├── 01-core-claims.md
+│   ├── 02-evidence.md
+│   ├── 03-logic-flow.md
+│   ├── 04-context.md
+│   └── 05-methodology.md
+├── insights/
+│   ├── insight-self-attention-novelty.md
+│   └── insight-scaling-factor.md
+└── source.md
 ```
 
-**03-logic-flow.md**:
-```
-[Limitation of RNN: sequential computation]
-    + [Attention已在encoder-decoder中证明有效]
-        │
-        ▼ (归纳推理)
-    [Hypothesis: Attention alone suffices]
-        + [Experimental evidence: BLEU scores]
-        │
-        ▼
-    [Thesis confirmed on WMT benchmarks]
+### INDEX 示例
+
+```markdown
+## 按术语
+### Self-Attention
+- L1: §3.2§3.2.1(定义), §5.1(实验)
+- L2: 01-core-claims.md§Claim-2, 05-methodology.md§Architecture
+- L3: insight-self-attention-novelty.md
 ```
 
 ---
 
 ## 3. 模型类 (Model) — 《好战略坏战略》
 
-### 触发
-> 帮我深度阅读《好战略坏战略》
-
-### Agent 行为
-1. 分类 → `model` / `business`
-2. 存储 → `reading-library/good-strategy-bad-strategy/`
-3. 读取 `model-reader.md` → 生成 7 份报告
-
-### 报告示例片段
-
-**01-models.md**:
+### 目录结构
 ```
-### F01 — 好战略的内核 (The Kernel)
-三要素：诊断(Diagnosis) → 指导方针(Guiding Policy) → 协调行动(Coherent Actions)
-
-[Diagnosis: 识别关键挑战]
-       │
-       ▼
-[Guiding Policy: 应对挑战的总体方法]
-       │
-       ▼
-[Coherent Actions: 协调一致的执行步骤]
+reading-library/good-strategy-bad-strategy/
+├── meta.json
+├── summary.md
+├── index.md          ← 分面索引（模型/变量/案例/行业）
+├── L1-scenes.md      ← 章节概念单元穷举
+├── reports/
+│   ├── 01-models.md
+│   ├── 02-variables.md
+│   ├── 03-assumptions.md
+│   ├── 04-applications.md
+│   └── 05-comparisons.md
+├── insights/
+│   ├── insight-kernel-in-practice.md
+│   └── insight-bad-strategy-signs.md
+└── source.md
 ```
 
-**03-assumptions.md**:
-```
-| A01 | 战略的核心是应对挑战而非设定目标 | §1 | Definitional |
-| A02 | 领导者能准确识别关键挑战 | Implicit | 若违反，整个内核失效 |
+### INDEX 示例
+
+```markdown
+## 按案例
+### 西南航空
+- L1: Ch.4§4.3
+- L2: 04-applications.md§Case-A01
+- L3: insight-southwest-coherence.md
 ```
 
 ---
 
-## 4. 信息/工具类 (Reference) — Kubernetes 官方文档
+## 4. 信息/工具类 (Reference) — Kubernetes Pod 文档
 
-### 触发
-> 帮我深度阅读 Kubernetes 官方文档的 Pod 章节
-
-### Agent 行为
-1. 分类 → `reference` / `tech-doc`
-2. 存储 → `reading-library/k8s-pods-doc/`
-3. 读取 `reference-reader.md` → 生成 6 份报告
-
-### 报告示例片段
-
-**02-concepts.md**:
+### 目录结构
 ```
-| Pod | K8s中最小可部署单元，包含一个或多个容器 | Core | Container, Node | §Pods Overview |
-| Sidecar | 与主容器共享网络/存储的辅助容器 | Pattern | Pod, Container | §Pod Templates |
+reading-library/k8s-pods-doc/
+├── meta.json
+├── summary.md
+├── index.md          ← 分面索引（概念/操作/配置/错误）
+├── L1-scenes.md      ← 节/主题单元穷举
+├── reports/
+│   ├── 01-architecture.md
+│   ├── 02-concepts.md
+│   ├── 03-procedures.md
+│   └── 04-specifications.md
+├── insights/
+│   ├── insight-sidecar-vs-init.md
+│   └── insight-crashloop-diagnosis.md
+└── source.md
 ```
 
-**06-quick-reference.md**:
-```
-| 查看Pod | kubectl get pods -n {ns} | |
-| 查看详情 | kubectl describe pod {name} | |
-| 进入容器 | kubectl exec -it {name} -- /bin/sh | |
-| 查看日志 | kubectl logs {name} -f | -f 持续输出 |
+### INDEX 示例
+
+```markdown
+## 按错误/排障
+### CrashLoopBackOff
+- L1: §6§6.2
+- L3: insight-crashloop-diagnosis.md
 ```

@@ -1,36 +1,53 @@
 # Reading Library — 深度阅读文档库
 
-## 目录结构
+## 三层混合架构
 
 ```
-reading-library/
-├── README.md                  ← 本文件
-├── index.json                 ← 全局索引（自动维护）
-├── .templates/                ← 报告模板（可自定义）
+reading-library/{slug}/
+├── meta.json                    ← 文档元数据
+├── summary.md                   ← 一页纸摘要
+├── index.md                     ← 🔍 分面倒排索引（检索入口）
+├── L1-scenes.md                 ← 📋 穷举索引（覆盖率 100%）
+├── reports/                     ← 📊 L2 维度深度报告
+│   ├── 01-xxx.md
+│   ├── 02-xxx.md
 │   └── ...
-│
-├── {slug}/                    ← 每篇文档一个独立文件夹
-│   ├── meta.json              ← 文档元数据
-│   ├── source.md              ← 原文全文（gitignored）
-│   ├── source-01.md           ← 超长文本分卷（gitignored）
-│   ├── source-02.md
-│   ├── summary.md             ← 一页纸摘要（始终生成）
-│   ├── reports/               ← 多维分析报告
-│   │   ├── 01-entities.md
-│   │   ├── 02-symbols.md
-│   │   └── ...
-│   ├── qa/                    ← 问答记录
-│   │   ├── 2026-04-02-主题.md
-│   │   └── ...
-│   └── notes/                 ← 用户笔记（手动添加）
-│       └── ...
+├── insights/                    ← 💡 L3 原子洞察（持续生长）
+│   ├── insight-{topic}.md
+│   └── ...
+├── qa/                          ← 💬 问答记录
+│   └── {date}-{topic}.md
+├── notes/                       ← 📝 用户笔记
+└── source*.md                   ← 📄 原文（gitignored）
+```
+
+### 三层说明
+
+| 层 | 文件 | 特点 | 解决什么问题 |
+|----|------|------|-------------|
+| **L1** | `L1-scenes.md` | 穷举·浅 | 覆盖率——任何细节都能搜到 |
+| **L2** | `reports/*.md` | 选择·深 | 分析深度——维度切分的深度解读 |
+| **L3** | `insights/*.md` | 原子·链接 | 非结构化发现——越问越丰富 |
+| **INDEX** | `index.md` | 倒排索引 | 检索效率——Grep 一次命中 |
+
+### 检索流程
+
+```
+用户提问
+  │
+  ▼
+Grep index.md → 命中条目 → 指向 L1/L2/L3 位置
+  │
+  ▼
+Read L3 (原子洞察) → Read L1 (场景上下文) → Grep L2 (维度分析) → Grep source (原文)
+  │
+  ▼
+WebSearch (带书名限定) → 综合回答
 ```
 
 ## 文件说明
 
 ### meta.json
-
-每个文档的元数据，用于索引和检索。
 
 ```json
 {
@@ -44,23 +61,25 @@ reading-library/
   "updated_at": "2026-04-02T12:00:00Z",
   "status": "analyzed",
   "source_chars": 580000,
-  "source_parts": 8,
-  "report_count": 7
+  "source_parts": 15,
+  "l1_entries": 520,
+  "l2_reports": 6,
+  "l3_insights": 12
 }
 ```
 
 字段说明：
 - `type`: `narrative` | `argument` | `model` | `reference`
-- `status`: `ingested`（已入库）→ `analyzing`（分析中）→ `analyzed`（已完成）
-- `source_parts`: 原文被分成几个文件（1 表示单文件 source.md）
+- `status`: `ingested` → `analyzing` → `analyzed`
+- `l1_entries`: L1 场景/单元条目数
+- `l2_reports`: L2 维度报告数
+- `l3_insights`: L3 原子洞察数（会持续增长）
 
-### index.json
-
-全局索引，列出所有已入库的文档，方便快速查找。
+### index.json（全局索引）
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "documents": [
     {
       "slug": "hong-lou-meng",
@@ -73,38 +92,33 @@ reading-library/
 }
 ```
 
-### summary.md
+### 按文本类型的 L2 报告
 
-无论什么类型的文本，都会生成一份一页纸摘要，包含：
-- 核心内容概述（200-500 字）
-- 关键词 / 标签
-- 与各份报告的导航链接
+| 类型 | 报告数 | 维度 |
+|------|--------|------|
+| narrative | 6 | 实体、符号、结构、规则、主题、风格 |
+| argument | 5 | 论点、论据、逻辑、脉络、方法 |
+| model | 5 | 模型、变量、假设、应用、对比 |
+| reference | 4 | 体系、概念、流程、规格 |
 
-### reports/ 目录
+### INDEX 分面（按类型不同）
 
-按维度独立的分析报告，不交叉。命名规则：`{序号}-{英文名}.md`。
-具体报告数量和维度取决于文本类型（参见 deep-reader skill 定义）。
-
-### qa/ 目录
-
-每次用户基于该文档的问答记录，命名规则：`{日期}-{主题slug}.md`。
-方便回顾历史讨论。
-
-### notes/ 目录
-
-用户自己的笔记和批注，不会被自动修改。
+| 类型 | 分面 |
+|------|------|
+| narrative | 人物、关键场景、主题、意象/符号 |
+| argument | 论点、术语、方法、学者/引文 |
+| model | 模型/框架、变量/概念、案例、行业/场景 |
+| reference | 概念/术语、操作/命令、配置/参数、错误/排障 |
 
 ## 使用方式
 
-在 insightor 中：
-
 ```
-> 帮我深度阅读这篇文章 [粘贴文本 / 给出文件路径 / 给出 URL]
-> 红楼梦里黛玉的判词是什么意思？
+> 帮我深度阅读这篇文章 [粘贴文本 / 文件路径 / URL]
+> 红楼梦里宝钗扑蝶是怎么回事？
 > 列出我所有的阅读文档
 ```
 
 ## Git 说明
 
-- `source*.md` 文件被 `.gitignore` 忽略（原文可能很大或有版权）
-- `meta.json`、`summary.md`、`reports/`、`qa/` 都会被 git 跟踪
+- `source*.md` 被 `.gitignore` 忽略（原文可能很大或有版权）
+- `meta.json`、`summary.md`、`index.md`、`L1-scenes.md`、`reports/`、`insights/`、`qa/` 都会被 git 跟踪
